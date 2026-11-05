@@ -3,50 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>文字バトル</title>
+<title>唯一解バトル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,500;0,700;1,500&family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@700;900&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Layout: 原稿用紙のマス目を舞台にした一段組。上に対戦する2文字、下に入力・解析・コマンド */
+/* Layout: 方眼ノートの上で、敵の「封印数」に向けてカードを一列に並べる一段組 */
 :root {
-  --paper: #f2f5ef;
-  --card: #ffffff;
-  --ink: #1d2a27;
-  --muted: #5e6d67;
-  --grid: #a9c8b2;
-  --grid-soft: #dde9df;
-  --stamp: #c4422c;
-  --stamp-ink: #ffffff;
-  --good: #2f8a4a;
-  --fire: #d9480f; --water: #1c6fc4; --wood: #2f8a3c; --earth: #9a6a22; --light: #b88a00; --dark: #6741d9;
-  --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --paper: #f4f6f8;
+  --sheet: #ffffff;
+  --ink: #18212b;
+  --muted: #5d6b78;
+  --rule: #c9d6e2;
+  --rule-soft: #e3eaf1;
+  --accent: #d1462f;
+  --accent-ink: #ffffff;
+  --good: #2b8a4b;
+  --c-num: #18212b;
+  --c-const: #0f7d78;
+  --c-op: #c25a12;
+  --c-fn: #2457b8;
+  --c-int: #7a3fb5;
+  --font-display: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
-  --font-glyph: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
-  --font-num: "DM Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-math: "STIX Two Text", "Cambria Math", "Times New Roman", serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #121816; --card: #1a221f; --ink: #e5ece8; --muted: #93a39c;
-    --grid: #3a5a48; --grid-soft: #22302a; --stamp: #ff7a5c; --stamp-ink: #1a0d09; --good: #6fd08c;
-    --fire: #ff8a4c; --water: #5aa9ff; --wood: #63c96f; --earth: #d6a35a; --light: #f0c93a; --dark: #a88bff;
+    --paper: #10161c; --sheet: #182129; --ink: #e6edf3; --muted: #93a3b2; --rule: #2e3f4f; --rule-soft: #1d2933;
+    --accent: #ff7a5c; --accent-ink: #1b0b06; --good: #64d08a;
+    --c-num: #e6edf3; --c-const: #4fd1c5; --c-op: #ffa45c; --c-fn: #7fb0ff; --c-int: #c79bff;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #121816; --card: #1a221f; --ink: #e5ece8; --muted: #93a39c;
-  --grid: #3a5a48; --grid-soft: #22302a; --stamp: #ff7a5c; --stamp-ink: #1a0d09; --good: #6fd08c;
-  --fire: #ff8a4c; --water: #5aa9ff; --wood: #63c96f; --earth: #d6a35a; --light: #f0c93a; --dark: #a88bff;
+  --paper: #10161c; --sheet: #182129; --ink: #e6edf3; --muted: #93a3b2; --rule: #2e3f4f; --rule-soft: #1d2933;
+  --accent: #ff7a5c; --accent-ink: #1b0b06; --good: #64d08a;
+  --c-num: #e6edf3; --c-const: #4fd1c5; --c-op: #ffa45c; --c-fn: #7fb0ff; --c-int: #c79bff;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body {
+  margin: 0;
   background: var(--paper);
   background-image:
-    linear-gradient(var(--grid-soft) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-soft) 1px, transparent 1px);
-  background-size: 28px 28px;
+    linear-gradient(var(--rule-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule-soft) 1px, transparent 1px);
+  background-size: 24px 24px;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 15px;
@@ -55,112 +60,101 @@ body {
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 900; font-size: 30px; margin: 0; line-height: 1.1; letter-spacing: .04em; }
+h1 small { display: block; font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--muted); letter-spacing: .1em; margin-top: 4px; }
+.meta { display: flex; gap: 16px; font-size: 13px; color: var(--muted); align-items: baseline; flex-wrap: wrap; }
+.meta b { font-family: var(--font-num); color: var(--ink); font-size: 16px; font-weight: 500; }
+.hearts { color: var(--accent); letter-spacing: 2px; font-size: 16px; }
 
-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-h1 { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.1; margin: 0; letter-spacing: .04em; }
-h1 small { display: block; font-family: var(--font-body); font-size: 12px; color: var(--muted); letter-spacing: .12em; margin-top: 4px; }
-.meta { display: flex; gap: 16px; font-size: 13px; color: var(--muted); align-items: baseline; }
-.meta b { font-family: var(--font-num); font-weight: 500; color: var(--ink); font-size: 16px; }
-.lives { color: var(--stamp); letter-spacing: 2px; font-size: 16px; }
+.sheet { background: var(--sheet); border: 1.5px solid var(--rule); border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
-/* 対戦エリア */
-.arena { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; }
-.vs { font-family: var(--font-display); color: var(--stamp); align-self: center; font-size: 18px; }
-.fighter {
-  background: var(--card); border: 1.5px solid var(--grid); border-radius: 4px;
-  padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; position: relative;
-}
-.fighter .role { font-size: 11px; letter-spacing: .14em; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
-.cell {
-  position: relative; width: 100%; max-width: 150px; aspect-ratio: 1; margin: 0 auto;
-  border: 1.5px solid var(--grid);
-  background:
-    linear-gradient(var(--grid-soft), var(--grid-soft)) center / 100% 1px no-repeat,
-    linear-gradient(var(--grid-soft), var(--grid-soft)) center / 1px 100% no-repeat;
-  display: grid; place-items: center;
-}
-.glyph { font-family: var(--font-glyph); font-weight: 700; font-size: clamp(56px, 16vw, 104px); line-height: 1; }
-.glyph.empty { color: var(--grid); }
-.glyph.hit { animation: hit .35s; }
-.glyph.down { opacity: .15; transform: rotate(-12deg) scale(.8); transition: all .5s; }
-@keyframes hit { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); color: var(--stamp); } 75% { transform: translateX(8px); color: var(--stamp); } }
-@media (prefers-reduced-motion: reduce) { .glyph.hit { animation: none; } .glyph.down { transition: none; } }
-.pop {
-  position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
-  font-family: var(--font-num); font-weight: 500; font-size: 22px; color: var(--stamp);
-  animation: pop .9s forwards; pointer-events: none; white-space: nowrap;
-}
-.pop.heal { color: var(--good); }
-@keyframes pop { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 -36px; } }
-.chip {
-  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
-  color: var(--card); background: var(--muted); white-space: nowrap;
-}
-.el-火 { background: var(--fire); } .el-水 { background: var(--water); } .el-木 { background: var(--wood); }
-.el-土 { background: var(--earth); } .el-光 { background: var(--light); } .el-闇 { background: var(--dark); }
-.hpbar { height: 8px; background: var(--grid-soft); border-radius: 2px; overflow: hidden; }
-.hpbar > div { height: 100%; background: var(--good); transition: width .35s; }
-.hpbar.low > div { background: var(--stamp); }
-.hpnum { font-family: var(--font-num); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 6px; font-size: 11px; color: var(--muted); }
-.stats span b { display: block; font-family: var(--font-num); font-weight: 500; font-size: 15px; color: var(--ink); }
-.matchup { font-size: 12px; text-align: center; min-height: 1.6em; color: var(--muted); }
-.matchup strong { color: var(--stamp); }
+/* 敵 */
+.foe { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.foe-glyph { font-family: var(--font-math); font-size: 64px; line-height: 1; width: 84px; height: 84px; display: grid; place-items: center; border: 1.5px solid var(--rule); border-radius: 50%; color: var(--c-int); }
+.foe-glyph.hit { animation: hit .4s; }
+.foe-glyph.down { opacity: .2; transform: scale(.7) rotate(-20deg); transition: all .5s; }
+@keyframes hit { 0%,100% { transform: translateX(0); } 30% { transform: translateX(-8px); color: var(--accent); } 70% { transform: translateX(8px); color: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .foe-glyph.hit { animation: none; } .foe-glyph.down { transition: none; } }
+.foe-name { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.foe-sub { font-size: 12px; color: var(--muted); }
+.target { text-align: right; }
+.target .label { font-size: 11px; color: var(--muted); letter-spacing: .12em; }
+.target .value { font-family: var(--font-math); font-weight: 700; font-size: 52px; line-height: 1; color: var(--accent); }
 
-/* パネル */
-.panel { background: var(--card); border: 1.5px solid var(--grid); border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.panel h2 { font-family: var(--font-display); font-weight: 400; font-size: 17px; margin: 0; }
-.panel p.hint { margin: 0; font-size: 13px; color: var(--muted); }
-form.entry { display: flex; gap: 8px; flex-wrap: wrap; }
-form.entry input {
-  width: 4.2em; font-family: var(--font-glyph); font-weight: 700; font-size: 32px; text-align: center;
-  border: 1.5px solid var(--grid); background: var(--paper); color: var(--ink); border-radius: 4px; padding: 4px;
+/* 解答列 */
+.line-label { font-size: 11px; color: var(--muted); letter-spacing: .12em; display: flex; justify-content: space-between; gap: 8px; }
+.slots {
+  min-height: 74px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 10px; border: 1.5px dashed var(--rule); border-radius: 4px;
 }
-button {
+.slots .placeholder { color: var(--muted); font-size: 13px; }
+.slots .eq { font-family: var(--font-math); font-size: 26px; color: var(--accent); margin-left: 4px; }
+.hand { display: flex; flex-wrap: wrap; gap: 8px; min-height: 60px; }
+.card {
+  font-family: var(--font-math); font-weight: 500; font-size: 24px; line-height: 1;
+  min-width: 48px; height: 54px; padding: 0 10px;
+  background: var(--sheet); color: var(--c-num);
+  border: 1.5px solid currentColor; border-bottom-width: 4px; border-radius: 6px;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .08s;
+}
+.card:hover { transform: translateY(-2px); }
+.card:active { transform: translateY(1px); }
+.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card.const { color: var(--c-const); font-style: italic; }
+.card.op { color: var(--c-op); }
+.card.fn { color: var(--c-fn); font-size: 19px; }
+.card.int, .card.dx, .card.x, .card.diff, .card.at { color: var(--c-int); }
+.card.diff, .card.at { font-size: 19px; }
+.reading .frac { font-size: .7em; }
+.at sub { font-size: .6em; }
+.card.x { font-style: italic; }
+.card.fixed { box-shadow: 0 0 0 3px var(--good); }
+.card.used { visibility: hidden; }
+
+.reading { font-family: var(--font-math); font-size: 22px; min-height: 1.8em; overflow-x: auto; white-space: nowrap; padding: 4px 0; }
+.reading sup { font-size: .65em; }
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1; font-size: .62em; margin: 0 .08em; }
+.frac > span:first-child { border-bottom: .07em solid currentColor; padding: 0 .12em .06em; }
+.frac > span:last-child { padding: .06em .12em 0; }
+.ov { border-top: .06em solid currentColor; padding-left: .05em; }
+.target .value sup { font-size: .5em; }
+.card.post { color: var(--c-op); }
+.reading sub { font-size: .6em; }
+.reading .int-sign { font-size: 1.3em; vertical-align: -0.12em; }
+.reading-error { font-family: var(--font-body); font-size: 13px; color: var(--muted); white-space: normal; }
+
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+button.btn {
   font-family: var(--font-body); font-weight: 700; font-size: 15px;
-  border: 1.5px solid var(--ink); background: var(--card); color: var(--ink);
+  border: 1.5px solid var(--ink); background: var(--sheet); color: var(--ink);
   border-radius: 4px; padding: 10px 16px; cursor: pointer;
 }
-button.primary { background: var(--stamp); border-color: var(--stamp); color: var(--stamp-ink); }
-button:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
-button:disabled { opacity: .35; cursor: default; }
-button:focus-visible, input:focus-visible { outline: 3px solid var(--stamp); outline-offset: 2px; }
-.error { color: var(--stamp); font-size: 13px; margin: 0; min-height: 1.4em; }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.btn:disabled { opacity: .35; cursor: default; }
+button.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.feedback { font-size: 14px; min-height: 1.6em; margin: 0; }
+.feedback.ok { color: var(--good); font-weight: 700; }
+.feedback.ng { color: var(--accent); font-weight: 700; }
+.feedback .math { font-family: var(--font-math); font-weight: 500; font-size: 1.2em; color: var(--ink); white-space: nowrap; }
+.feedback .math sup { font-size: .65em; }
+.feedback .math sub { font-size: .6em; }
+.loading { color: var(--muted); font-size: 14px; }
 
-.analysis { display: grid; grid-template-columns: auto auto 1fr; gap: 16px; align-items: start; }
-.analysis figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
-.analysis figcaption { font-size: 11px; color: var(--muted); letter-spacing: .08em; }
-#bitmap { width: 128px; height: 128px; image-rendering: pixelated; border: 1px solid var(--grid); background: var(--paper); max-width: 100%; }
-#radar { width: 150px; height: 150px; max-width: 100%; }
-.features { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.feat { display: grid; grid-template-columns: 8.5em 1fr 2.6em; gap: 8px; align-items: center; font-size: 12px; }
-.feat .track { height: 6px; background: var(--grid-soft); border-radius: 2px; overflow: hidden; }
-.feat .track > div { height: 100%; background: var(--ink); }
-.feat .val { font-family: var(--font-num); text-align: right; color: var(--muted); }
-.feat .to { color: var(--muted); }
-.bonuses { display: flex; flex-wrap: wrap; gap: 6px; }
-.bonus { font-size: 12px; border: 1px dashed var(--stamp); color: var(--stamp); padding: 2px 8px; border-radius: 3px; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.commands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.commands button small { display: block; font-weight: 400; font-size: 11px; color: inherit; opacity: .75; }
-#log { font-size: 13px; max-height: 168px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--grid-soft); padding-top: 10px; }
-#log p { margin: 0; }
-#log .me { color: var(--ink); }
-#log .foe { color: var(--stamp); }
-#log .sys { color: var(--muted); }
-.used { font-size: 12px; color: var(--muted); }
-.used span { font-family: var(--font-glyph); font-weight: 700; color: var(--ink); text-decoration: line-through; text-decoration-color: var(--stamp); margin-right: 4px; }
-.rules { font-size: 12px; color: var(--muted); margin: 0; padding-left: 1.2em; }
-.rules li { margin: 2px 0; }
+details.rules { font-size: 13px; color: var(--muted); }
+details.rules summary { cursor: pointer; font-weight: 700; color: var(--ink); }
+details.rules ul { margin: 8px 0 0; padding-left: 1.2em; }
+details.rules li { margin: 3px 0; }
+details.rules code { font-family: var(--font-math); font-size: 15px; color: var(--ink); }
 
-@media (max-width: 560px) {
-  .arena { grid-template-columns: 1fr 1fr; }
-  .vs { display: none; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .analysis { grid-template-columns: auto 1fr; }
-  .features { grid-column: 1 / -1; }
-  .commands button { padding: 10px 6px; }
+@media (max-width: 520px) {
+  .foe { grid-template-columns: auto 1fr; }
+  .target { grid-column: 1 / -1; text-align: left; display: flex; align-items: baseline; gap: 10px; }
+  .foe-glyph { width: 64px; height: 64px; font-size: 46px; }
+  .card { min-width: 42px; height: 48px; font-size: 21px; padding: 0 8px; }
+  .card.fn { font-size: 17px; }
 }
 </style>
 </head>
@@ -168,595 +162,799 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--stamp); out
 
 <main>
   <header>
-    <h1>文字バトル<small>一文字を解析して、戦わせる</small></h1>
+    <h1>唯一解バトル<small>カードを並べて、ただ一つの式を見つけろ</small></h1>
     <div class="meta">
-      <span>第 <b id="stage">1</b> 戦</span>
-      <span>命 <span class="lives" id="lives">●●●</span></span>
+      <span>第 <b id="stage">1</b> 問</span>
+      <span>命 <span class="hearts" id="hearts">●●●</span></span>
+      <span>得点 <b id="score">0</b></span>
       <span>最高 <b id="best">0</b></span>
     </div>
   </header>
 
-  <section class="arena" aria-label="対戦">
-    <div class="fighter" id="meCard">
-      <div class="role"><span>あなた</span><span id="meEl"></span></div>
-      <div class="cell"><span class="glyph empty" id="meGlyph">？</span></div>
-      <div class="hpbar" id="meHpBar"><div style="width:100%"></div></div>
-      <div class="hpnum"><span>HP</span><span id="meHp">—</span></div>
-      <div class="stats" id="meStats"></div>
-    </div>
-    <div class="vs">VS</div>
-    <div class="fighter" id="foeCard">
-      <div class="role"><span>敵</span><span id="foeEl"></span></div>
-      <div class="cell"><span class="glyph" id="foeGlyph">丶</span></div>
-      <div class="hpbar" id="foeHpBar"><div style="width:100%"></div></div>
-      <div class="hpnum"><span>HP</span><span id="foeHp">—</span></div>
-      <div class="stats" id="foeStats"></div>
-    </div>
-  </section>
-  <div class="matchup" id="matchup"></div>
-
-  <!-- 文字選択フェーズ -->
-  <section class="panel" id="pickPanel">
-    <h2>戦う文字を入力</h2>
-    <p class="hint">漢字・かな・英数字・記号・絵文字、なんでも一文字。形を解析して能力と属性が決まります。何度でも解析し直せますが、一度戦わせた文字は二度と使えません。</p>
-    <form class="entry" id="entryForm" autocomplete="off">
-      <input id="charInput" maxlength="8" aria-label="文字を一文字入力" value="剣">
-      <button type="submit">解析する</button>
-    </form>
-    <p class="error" id="error"></p>
-    <div id="analysisBox" hidden>
-      <div class="analysis">
-        <figure><canvas id="bitmap" width="64" height="64"></canvas><figcaption>解析した形（64×64）</figcaption></figure>
-        <figure><canvas id="radar" width="300" height="300"></canvas><figcaption>能力</figcaption></figure>
-        <div class="features" id="features"></div>
+  <section class="sheet">
+    <div class="foe">
+      <div class="foe-glyph" id="foeGlyph">Σ</div>
+      <div>
+        <div class="foe-name" id="foeName">総和の番人</div>
+        <div class="foe-sub" id="foeSub">封印数ちょうどの式をぶつけると倒せる</div>
       </div>
-      <div class="bonuses" id="bonuses"></div>
+      <div class="target"><div class="label">封印数</div><div class="value" id="target">?</div></div>
     </div>
-    <div class="actions">
-      <button class="primary" id="fightBtn" disabled>この文字で戦う</button>
-    </div>
-    <div class="used" id="used"></div>
   </section>
 
-  <!-- 戦闘フェーズ -->
-  <section class="panel" id="battlePanel" hidden>
-    <div class="commands" id="commands">
-      <button data-cmd="attack">たたかう<small>攻撃 − 敵の防御</small></button>
-      <button data-cmd="magic" id="magicBtn">まほう<small>魔力・防御無視</small></button>
-      <button data-cmd="guard">まもる<small>被ダメ半減・少し回復</small></button>
+  <section class="sheet">
+    <div class="line-label"><span>あなたの式（タップで手札に戻す）</span><span id="countInfo"></span></div>
+    <div class="slots" id="slots"></div>
+    <div class="line-label"><span>こう読まれます</span></div>
+    <div class="reading" id="reading"></div>
+    <div class="line-label"><span>手札（タップで式の右端に置く）</span></div>
+    <div class="hand" id="hand"><span class="loading">問題を作っています…</span></div>
+    <div class="buttons">
+      <button class="btn primary" id="submitBtn" disabled>判定する</button>
+      <button class="btn" id="clearBtn">全部戻す</button>
+      <button class="btn" id="hintBtn">ヒント（−20点）</button>
+      <button class="btn" id="passBtn">パス（命 −1）</button>
+      <button class="btn primary" id="nextBtn" hidden>次の問題へ</button>
     </div>
-    <div class="actions" id="afterBattle" hidden>
-      <button class="primary" id="nextBtn">次の敵へ</button>
-    </div>
-    <div id="log" aria-live="polite"></div>
+    <p class="feedback" id="feedback" aria-live="polite"></p>
   </section>
 
-  <section class="panel" id="rulesPanel">
-    <h2>形から能力が決まる仕組み</h2>
-    <ul class="rules">
-      <li><b>黒さ</b>（線の量）→ HP（黒いほど遅くなる）　／　<b>複雑さ</b>（線の切れ目の多さ）→ 攻撃　／　<b>左右対称</b> → 防御　／　<b>余白</b> → 素早さ　／　<b>丸み</b> → 魔力</li>
-      <li>数値は、よく使う文字約200字の中での順位（パーセンタイル）です。</li>
-      <li>属性は形の特徴の組み合わせで決まります。火→木→土→水→火 の順に有利（1.5倍）、光と闇はお互いに1.5倍。</li>
-      <li>素早い方が先に動き、素早さの差が大きいほど攻撃をかわしやすくなります。勝つたびに「筆力」が上がって少し強くなります。</li>
-      <li>文字の種類や、意味によって隠しボーナスがあるかも……？</li>
-    </ul>
+  <section class="sheet">
+    <details class="rules" open>
+      <summary>式の読み方のルール</summary>
+      <ul>
+        <li>手札は<b>全部使います</b>。並べた順番がそのまま式になります。<b>かっこはありません</b>。</li>
+        <li>強い順：関数（<code>sin</code> <code>cos</code> <code>tan</code> <code>ln</code> <code>log</code> <code>log₂</code> <code>√</code> <code>|·|</code>）と <code>!</code> → <code>^</code> → <code>C</code> → <code>×</code> <code>÷</code> → <code>+</code> <code>−</code>。</li>
+        <li>関数は<b>すぐ右の1項</b>だけにかかります。<code>sin π ^ 2</code> は (sin π)² 、<code>√ 4 + 5</code> は √4 + 5。</li>
+        <li><code>^</code> は右から計算します（<code>2 ^ 3 ^ 2</code> = 2⁹）。</li>
+        <li><code>!</code> は階乗で、すぐ左の数にかかります（<code>3 !</code> = 6）。<code>C</code> は組み合わせで、<code>5 C 2</code> = ₅C₂ = 10。<code>C</code> は <code>^</code> より弱く、<code>×</code> <code>÷</code> より強いです。</li>
+        <li>封印数は整数だけでなく、分数・π・√・e を含むこともあります。</li>
+        <li>数字はくっつきません（<code>1</code> <code>2</code> は 12 になりません）。<code>2π</code> のような省略したかけ算もできません。必ず <code>×</code> を使います。</li>
+        <li><code>−</code> は引き算だけです。式の先頭や記号の直後には置けません。</li>
+        <li>積分は <code>∫₀^</code> → 上端（1項）→ 中身の式 → <code>dx</code> の順に並べます。</li>
+        <li>微分は <code>d/dx</code> → 中身の式 → <code>|ₓ₌</code> → 代入する値（1項）の順です。<code>d/dx x ^ 3 |ₓ₌ 2</code> は x³ を微分して x=2 を入れた値 = 12。尖った点（|x| の 0 など）では微分できません。</li>
+        <li><code>x</code> は積分・微分の中だけで使えます。積分と微分を入れ子にはできません。</li>
+        <li><code>log</code> は常用対数（底10）、<code>log₂</code> は底2、<code>|·|</code> は絶対値です（どれも関数カードと同じく、すぐ右の1項にかかります）。</li>
+        <li>どの問題も、正解になる式は<b>1つだけ</b>です（足し算・かけ算の順番の入れ替えは同じ式とみなします）。</li>
+      </ul>
+    </details>
   </section>
 </main>
 
 <script>
-// ================= 設定 =================
-const N = 64;
-const GLYPH_FONT = '700 50px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif';
-const REF_CHARS =
-  "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん" +
-  "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン" +
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
-  "一二三四五六七八九十人大小山川日月火水木金土天心手目口田中上下右左東西南北春夏秋冬花鳥風雪雨" +
-  "龍鬱鷹驚纏魔鬼神愛剣盾王海森林光闇空星夢声道国学校語時間電車猫犬魚虫石竹糸音楽";
-const FEATURE_KEYS = ["ink", "edges", "sym", "sparse", "round", "top", "tall"];
-const FEATURE_LABELS = {
-  ink: ["黒さ", "HP↑ 速さ↓"], edges: ["複雑さ", "攻撃"], sym: ["左右対称", "防御"], sparse: ["余白", "素早さ"],
-  round: ["丸み", "魔力"], top: ["上の重さ", "属性"], tall: ["縦長さ", "属性"],
+// ===================================================================
+//  トークン（カード）
+// ===================================================================
+const CARD = {
+  num: n => ({ k: "num", v: n, s: String(n) }),
+  pi: () => ({ k: "num", v: Math.PI, s: "π", cls: "const" }),
+  e: () => ({ k: "num", v: Math.E, s: "e", cls: "const" }),
+  op: o => ({ k: "op", s: o }),
+  fn: f => ({ k: "fn", s: f }),
+  int: () => ({ k: "int", s: "∫₀^" }),
+  x: () => ({ k: "x", s: "x" }),
+  dx: () => ({ k: "dx", s: "dx" }),
+  fact: () => ({ k: "post", s: "!" }),
+  diff: () => ({ k: "diff", s: "d/dx" }),
+  at: () => ({ k: "at", s: "|ₓ₌" }),
 };
-const ELEMENTS = {
-  火: [0, .6, -.3, 0, -.8, .8, .3],
-  水: [0, -.4, .2, 0, .9, -.8, 0],
-  木: [-.3, 0, .8, 0, 0, .3, .8],
-  土: [.8, 0, .3, -.4, -.3, -.6, -.7],
-  光: [-.8, -.4, .5, .8, 0, 0, 0],
-  闇: [.7, .8, -.7, -.3, 0, 0, 0],
-};
-const BEATS = { 火: "木", 木: "土", 土: "水", 水: "火" };
-const MEANING = {
-  火: "火炎焔灯燃熱焼爆赤陽炭煙🔥",
-  水: "水海川氷雨波泉湖涙青雫流滝💧🌊",
-  木: "木森林花草葉竹桜緑芽根樹🌲🌸",
-  土: "土山岩石砂地岡鉄金鋼田🪨⛰",
-  光: "光日星明白聖天神愛晴輝☀⭐✨",
-  闇: "闇黒夜影死魔鬼呪悪冥暗🌙💀",
-};
-const ENEMY_LINE = ["丶", "口", "虫", "犬", "蛇", "狼", "熊", "鬼", "骸", "雷", "竜", "鬱", "魔", "神"];
+const PREC = { "+": 1, "−": 1, "×": 2, "÷": 2, "C": 2.5, "^": 3 };
 
-// ================= 解析 =================
-const work = document.createElement("canvas");
-work.width = work.height = N;
-const wctx = work.getContext("2d", { willReadFrequently: true });
-let refDist = null;
+// ===================================================================
+//  構文解析（かっこ無し・優先順位あり）
+// ===================================================================
+class ParseError extends Error { constructor(msg, pos) { super(msg); this.pos = pos; } }
 
-function firstGrapheme(s) {
-  s = (s || "").trim();
-  if (!s) return "";
-  if (window.Intl && Intl.Segmenter) {
-    const it = new Intl.Segmenter("ja", { granularity: "grapheme" }).segment(s)[Symbol.iterator]().next();
-    return it.value.segment;
+function parse(tokens) {
+  let i = 0, upperMode = false;
+  const peek = () => tokens[i];
+  const isOp = (t, ops) => t && t.k === "op" && ops.includes(t.s);
+
+  function expr(inInt) {
+    let node = term(inInt);
+    while (isOp(peek(), ["+", "−"])) { const op = tokens[i++].s; node = { k: "bin", op, l: node, r: term(inInt) }; }
+    return node;
   }
-  return Array.from(s)[0];
+  function term(inInt) {
+    let node = comb(inInt);
+    while (isOp(peek(), ["×", "÷"])) { const op = tokens[i++].s; node = { k: "bin", op, l: node, r: comb(inInt) }; }
+    return node;
+  }
+  function comb(inInt) {
+    const n = factor(inInt);
+    if (isOp(peek(), ["C"])) { i++; return { k: "bin", op: "C", l: n, r: factor(inInt) }; }
+    return n;
+  }
+  function factor(inInt) {
+    const base = unary(inInt);
+    if (isOp(peek(), ["^"])) { i++; return { k: "bin", op: "^", l: base, r: factor(inInt) }; }
+    return base;
+  }
+  function unary(inInt) {
+    const t = peek();
+    if (t && t.k === "fn") { i++; return { k: "fn", f: t.s, a: unary(inInt) }; }
+    let node = primary(inInt, upperMode);
+    while (peek() && peek().k === "post") { i++; node = { k: "fact", a: node }; }
+    return node;
+  }
+  function primary(inInt, noInt) {
+    const t = peek();
+    if (!t) throw new ParseError("式が途中で終わっています", i);
+    if (t.k === "num") { i++; return { k: "num", v: t.v, s: t.s }; }
+    if (t.k === "x") {
+      if (!inInt) throw new ParseError("x は積分・微分の中でしか使えません", i);
+      i++; return { k: "x" };
+    }
+    if (t.k === "int") {
+      if (inInt || noInt) throw new ParseError("積分・微分の中に積分は入れられません", i);
+      i++;
+      upperMode = true;
+      const up = unary(false);
+      upperMode = false;
+      const body = expr(true);
+      if (!peek() || peek().k !== "dx") throw new ParseError("積分が dx で閉じていません", i);
+      i++;
+      return { k: "int", up, body };
+    }
+    if (t.k === "diff") {
+      if (inInt || noInt) throw new ParseError("積分・微分の中に微分は入れられません", i);
+      i++;
+      const body = expr(true);
+      if (!peek() || peek().k !== "at") throw new ParseError("微分が |ₓ₌ で閉じていません", i);
+      i++;
+      upperMode = true;
+      const pt = unary(false);
+      upperMode = false;
+      return { k: "diff", body, pt };
+    }
+    if (t.k === "at") throw new ParseError("|ₓ₌ の前に d/dx と式が必要です", i);
+    if (t.k === "op") throw new ParseError(`「${t.s}」の前に数や式が必要です`, i);
+    if (t.k === "dx") throw new ParseError("dx の前に ∫₀^ が必要です", i);
+    if (t.k === "post") throw new ParseError("! の前に数が必要です", i);
+    throw new ParseError("ここに置けないカードです", i);
+  }
+
+  const ast = expr(false);
+  if (i < tokens.length) {
+    const t = tokens[i];
+    const msg = t.k === "dx" ? "dx に対応する ∫₀^ がありません"
+      : t.k === "at" ? "|ₓ₌ に対応する d/dx がありません"
+      : (t.k === "num" || t.k === "fn" || t.k === "int" || t.k === "x" || t.k === "diff") ? `「${t.s}」の前に演算子（＋−×÷^）が必要です`
+      : "ここで式が切れています";
+    throw new ParseError(msg, i);
+  }
+  return ast;
 }
 
-function rasterize(ch) {
-  wctx.clearRect(0, 0, N, N);
-  wctx.font = GLYPH_FONT;
-  wctx.textAlign = "center";
-  wctx.textBaseline = "middle";
-  wctx.fillStyle = "#000";
-  wctx.fillText(ch, N / 2, N / 2 + 2);
-  const d = wctx.getImageData(0, 0, N, N).data;
-  const bits = new Uint8Array(N * N);
-  for (let i = 0; i < N * N; i++) bits[i] = d[i * 4 + 3] > 110 ? 1 : 0;
-  return bits;
-}
-
-function rawFeatures(bits) {
-  const at = (x, y) => (x < 0 || y < 0 || x >= N || y >= N) ? 0 : bits[y * N + x];
-  let n = 0, sx = 0, sy = 0, minx = N, maxx = -1, miny = N, maxy = -1, trans = 0, boundary = 0, corners = 0;
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const v = at(x, y);
-    if (x > 0 && v !== at(x - 1, y)) trans++;
-    if (y > 0 && v !== at(x, y - 1)) trans++;
-    if (!v) continue;
-    n++; sx += x; sy += y;
-    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
-    const l = at(x - 1, y), r = at(x + 1, y), u = at(x, y - 1), dn = at(x, y + 1);
-    if (!(l && r && u && dn)) {
-      boundary++;
-      if ((l ^ r) && (u ^ dn)) corners++;
+// ===================================================================
+//  評価
+// ===================================================================
+const BAD = NaN;
+function evaluate(n, x) {
+  switch (n.k) {
+    case "num": return n.v;
+    case "x": return x;
+    case "fn": {
+      const a = evaluate(n.a, x);
+      if (!Number.isFinite(a)) return BAD;
+      if (n.f === "sin") return Math.sin(a);
+      if (n.f === "cos") return Math.cos(a);
+      if (n.f === "tan") return Math.abs(Math.cos(a)) < 1e-9 ? BAD : Math.tan(a);
+      if (n.f === "ln") return a <= 0 ? BAD : Math.log(a);
+      if (n.f === "√") return a < -1e-12 ? BAD : Math.sqrt(Math.max(0, a));
+      if (n.f === "log") return a <= 0 ? BAD : Math.log10(a);
+      if (n.f === "log₂") return a <= 0 ? BAD : Math.log2(a);
+      if (n.f === "|·|") return Math.abs(a);
+      return BAD;
+    }
+    case "bin": {
+      const l = evaluate(n.l, x), r = evaluate(n.r, x);
+      if (!Number.isFinite(l) || !Number.isFinite(r)) return BAD;
+      let v;
+      if (n.op === "+") v = l + r;
+      else if (n.op === "−") v = l - r;
+      else if (n.op === "×") v = l * r;
+      else if (n.op === "÷") v = Math.abs(r) < 1e-12 ? BAD : l / r;
+      else if (n.op === "^") v = (l === 0 && r <= 0) ? BAD : Math.pow(l, r);
+      else if (n.op === "C") v = binom(l, r);
+      return Number.isFinite(v) && Math.abs(v) < 1e7 ? v : BAD;
+    }
+    case "fact": {
+      const a = evaluate(n.a, x);
+      const k = Math.round(a);
+      if (!Number.isFinite(a) || Math.abs(a - k) > 1e-9 || k < 0 || k > 12) return BAD;
+      let f = 1; for (let j = 2; j <= k; j++) f *= j;
+      return f;
+    }
+    case "diff": {
+      const P = evaluate(n.pt, x);
+      if (!Number.isFinite(P) || Math.abs(P) > 50) return BAD;
+      const f = t => evaluate(n.body, t);
+      const h = 1e-3;
+      const d = (-f(P + 2 * h) + 8 * f(P + h) - 8 * f(P - h) + f(P - 2 * h)) / (12 * h);
+      const e = 1e-6, f0 = f(P);
+      const fw = (f(P + e) - f0) / e, bw = (f0 - f(P - e)) / e;
+      if (![d, fw, bw].every(Number.isFinite)) return BAD;
+      if (Math.abs(fw - bw) > 1e-2 * (1 + Math.abs(d))) return BAD; // 尖っていて微分できない点
+      return d;
+    }
+    case "int": {
+      const U = evaluate(n.up, x);
+      if (!Number.isFinite(U) || Math.abs(U) > 50) return BAD;
+      if (U === 0) return 0;
+      const N = 240, h = U / N;
+      let s = 0;
+      for (let k = 0; k <= N; k++) {
+        const f = evaluate(n.body, k * h);
+        if (!Number.isFinite(f)) return BAD;
+        s += f * (k === 0 || k === N ? 1 : k % 2 ? 4 : 2);
+      }
+      return s * h / 3;
     }
   }
-  if (n < 6) return null;
-  const bw = maxx - minx + 1, bh = maxy - miny + 1;
-  let match = 0;
-  for (let y = miny; y <= maxy; y++) for (let x = minx; x <= maxx; x++)
-    if (at(x, y) && at(minx + maxx - x, y)) match++;
-  const cy = sy / n;
-  return {
-    ink: n / (N * N),
-    edges: trans,
-    sym: match / n,
-    sparse: 1 - n / (bw * bh),
-    round: corners / boundary,
-    top: 1 - (cy - miny) / bh,
-    tall: bh / (bw + bh),
-    bbox: [minx, miny, maxx, maxy],
-  };
+  return BAD;
 }
 
-function percentile(key, v) {
-  const arr = refDist[key];
-  let lo = 0, eq = 0;
-  for (const a of arr) { if (a < v) lo++; else if (a === v) eq++; }
-  return Math.min(1, Math.max(0, (lo + eq / 2) / arr.length));
+function binom(n, r) {
+  const N = Math.round(n), K = Math.round(r);
+  if (Math.abs(n - N) > 1e-9 || Math.abs(r - K) > 1e-9 || K < 0 || N < K || N > 30) return BAD;
+  let v = 1; for (let j = 1; j <= K; j++) v = v * (N - K + j) / j;
+  return Math.round(v);
 }
 
-async function ensureFont(text) {
-  try {
-    await Promise.race([document.fonts.load(GLYPH_FONT, text), new Promise(r => setTimeout(r, 2500))]);
-  } catch (e) {}
+function valueOf(tokens) {
+  try { return evaluate(parse(tokens), 0); } catch (e) { return BAD; }
 }
 
-async function calibrate() {
-  await ensureFont(REF_CHARS);
-  refDist = Object.fromEntries(FEATURE_KEYS.map(k => [k, []]));
-  for (const ch of Array.from(REF_CHARS)) {
-    const f = rawFeatures(rasterize(ch));
-    if (f) FEATURE_KEYS.forEach(k => refDist[k].push(f[k]));
-  }
-}
-
-function hashStr(s) {
-  let h = 2166136261;
-  for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); }
-  return h >>> 0;
-}
-function seeded(seed) {
-  return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-}
-
-function scriptOf(ch) {
-  if (/\p{Extended_Pictographic}/u.test(ch)) return "emoji";
-  if (/\p{Script=Han}/u.test(ch)) return "kanji";
-  if (/\p{Script=Hiragana}/u.test(ch)) return "hiragana";
-  if (/\p{Script=Katakana}/u.test(ch)) return "katakana";
-  if (/\p{Script=Latin}/u.test(ch)) return "latin";
-  if (/\p{Nd}/u.test(ch)) return "digit";
-  return "other";
-}
-
-async function analyze(ch) {
-  await ensureFont(ch);
-  const bits = rasterize(ch);
-  const raw = rawFeatures(bits);
-  if (!raw) return null;
-  const vec = {};
-  FEATURE_KEYS.forEach(k => vec[k] = percentile(k, raw[k]));
-
-  // 属性：中心化したベクトルと各属性ベクトルのコサイン類似度
-  const c = FEATURE_KEYS.map(k => vec[k] - 0.5);
-  const norm = a => Math.hypot(...a) || 1;
-  const sims = Object.entries(ELEMENTS).map(([el, b]) => [el, c.reduce((s, v, i) => s + v * b[i], 0) / (norm(c) * norm(b))]);
-  sims.sort((a, b) => b[1] - a[1]);
-  let element = sims[0][0];
-
-  const st = {
-    hp: 50 + 70 * vec.ink,
-    atk: 8 + 22 * vec.edges,
-    def: 4 + 16 * vec.sym,
-    spd: 6 + 14 * (1 - vec.ink) + 8 * vec.sparse,
-    mag: 8 + 22 * vec.round,
-    crit: 0.06,
-  };
-  const bonuses = [];
-  const script = scriptOf(ch);
-  if (script === "kanji") { st.def *= 1.15; bonuses.push("漢字：防御 +15%"); }
-  if (script === "hiragana") { st.mag *= 1.25; bonuses.push("ひらがな：魔力 +25%"); }
-  if (script === "katakana") { st.spd *= 1.25; bonuses.push("カタカナ：素早さ +25%"); }
-  if (script === "latin") { st.crit += 0.14; bonuses.push("英字：会心率 +14%"); }
-  if (script === "digit") { st.atk *= 1.2; bonuses.push("数字：攻撃 +20%"); }
-  if (script === "emoji") {
-    const r = seeded(hashStr(ch));
-    for (const k of ["hp", "atk", "def", "spd", "mag"]) st[k] *= 0.6 + r() * 1.1;
-    bonuses.push("絵文字：能力が予測不能");
-  }
-  for (const [el, list] of Object.entries(MEANING)) {
-    if (Array.from(list).includes(ch)) {
-      element = el;
-      for (const k of ["hp", "atk", "def", "spd", "mag"]) st[k] *= 1.1;
-      bonuses.push(`言霊：意味から${el}属性、全能力 +10%`);
-      break;
+// ===================================================================
+//  正規形（足し算・かけ算の入れ替えを同一視）
+// ===================================================================
+function canon(n) {
+  switch (n.k) {
+    case "num": return n.s;
+    case "x": return "x";
+    case "fn": return `${n.f}(${canon(n.a)})`;
+    case "int": return `I[${canon(n.up)}]{${canon(n.body)}}`;
+    case "fact": return `F(${canon(n.a)})`;
+    case "diff": return `D[${canon(n.pt)}]{${canon(n.body)}}`;
+    case "bin": {
+      if (n.op === "+" || n.op === "−") {
+        const items = [];
+        (function walk(m, sign) {
+          if (m.k === "bin" && m.op === "+") { walk(m.l, sign); walk(m.r, sign); }
+          else if (m.k === "bin" && m.op === "−") { walk(m.l, sign); walk(m.r, -sign); }
+          else items.push((sign > 0 ? "+" : "-") + canon(m));
+        })(n, 1);
+        return "S(" + items.sort().join(",") + ")";
+      }
+      if (n.op === "×" || n.op === "÷") {
+        const items = [];
+        (function walk(m, inv) {
+          if (m.k === "bin" && m.op === "×") { walk(m.l, inv); walk(m.r, inv); }
+          else if (m.k === "bin" && m.op === "÷") { walk(m.l, inv); walk(m.r, !inv); }
+          else items.push((inv ? "/" : "*") + canon(m));
+        })(n, false);
+        return "P(" + items.sort().join(",") + ")";
+      }
+      return `${n.op === "C" ? "C" : "W"}(${canon(n.l)},${canon(n.r)})`;
     }
   }
-  for (const k of ["hp", "atk", "def", "spd", "mag"]) st[k] = Math.round(st[k]);
-  return { ch, bits, raw, vec, element, sims, stats: st, bonuses, script };
 }
 
-// ================= ゲーム状態 =================
+// ===================================================================
+//  全探索：カードの並べ方をすべて試し、正解の式（正規形）を数える
+// ===================================================================
+const close = (a, b) => Math.abs(a - b) < 1e-6 * Math.max(1, Math.abs(b));
+
+function countSolutions(cards, target, limit = 2) {
+  const groups = new Map();
+  for (const c of cards) {
+    if (!groups.has(c.s)) groups.set(c.s, { card: c, n: 0 });
+    groups.get(c.s).n++;
+  }
+  const kinds = [...groups.values()];
+  const seq = [];
+  const found = new Set();
+  const total = cards.length;
+
+  // 隣り合わせのルールで明らかにダメな並びを早めに捨てる
+  function canFollow(prev, t, state) {
+    const starts = t.k === "num" || t.k === "fn" || t.k === "int" || t.k === "diff" || t.k === "x";
+    if (!prev) return starts && t.k !== "x";
+    if (state.bodyStart) return starts || t.k === "post";
+    switch (prev.k) {
+      case "num": case "x": case "dx": case "post": return t.k === "op" || t.k === "dx" || t.k === "post" || t.k === "at";
+      case "op": case "fn": case "diff": return starts;
+      case "int": case "at": return t.k === "num" || t.k === "fn";
+    }
+    return false;
+  }
+
+  function rec(state) {
+    if (found.size >= limit) return;
+    if (seq.length === total) {
+      const last = seq[total - 1];
+      if (!(last.k === "num" || last.k === "x" || last.k === "dx" || last.k === "post")) return;
+      let ast;
+      try { ast = parse(seq); } catch (e) { return; }
+      const v = evaluate(ast, 0);
+      if (Number.isFinite(v) && close(v, target)) found.add(canon(ast));
+      return;
+    }
+    const prev = seq[seq.length - 1];
+    for (const g of kinds) {
+      if (!g.n) continue;
+      const t = g.card;
+      if (!canFollow(prev, t, state)) continue;
+      // 状態更新：∫₀^ の上端が終わった直後は中身の始まり
+      let next = { upper: state.upper, bodyStart: false };
+      if (t.k === "int") next.upper = true;
+      else if (state.upper && t.k === "num") { next.upper = false; next.bodyStart = true; }
+      else if (state.bodyStart && t.k === "post") next.bodyStart = true;
+      g.n--; seq.push(t);
+      rec(next);
+      seq.pop(); g.n++;
+      if (found.size >= limit) return;
+    }
+  }
+  rec({ upper: false, bodyStart: false });
+  return found;
+}
+
+// ===================================================================
+//  問題の生成
+// ===================================================================
+const rnd = Math.random;
+const pick = arr => arr[Math.floor(rnd() * arr.length)];
+
+const NICE_ARGS = {
+  sin: [[CARD.pi], [CARD.num.bind(null, 0)]],
+  cos: [[CARD.pi], [CARD.num.bind(null, 0)]],
+  tan: [[CARD.pi], [CARD.num.bind(null, 0)]],
+  ln: [[CARD.e], [CARD.num.bind(null, 1)]],
+  log: [[CARD.num.bind(null, 10)], [CARD.num.bind(null, 1)]],
+  "log₂": [[CARD.num.bind(null, 2)], [CARD.num.bind(null, 4)], [CARD.num.bind(null, 8)]],
+  "|·|": [[CARD.fn.bind(null, "cos"), CARD.pi], [CARD.fn.bind(null, "log₂"), () => CARD.num(1)], [CARD.fn.bind(null, "sin"), () => CARD.num(3)]],
+  "√": [[CARD.num.bind(null, 4)], [CARD.num.bind(null, 9)], [CARD.num.bind(null, 2)], [CARD.num.bind(null, 3)], [CARD.num.bind(null, 8)]],
+};
+
+function generate(level) {
+  const out = [];
+  const fnPool = level === 1 ? ["sin", "cos", "√", "ln", "log", "log₂"] : ["sin", "cos", "tan", "ln", "√", "log", "log₂", "|·|"];
+  let usedInt = false;
+
+  function num() {
+    const r = rnd();
+    if (r < 0.14) out.push(CARD.pi());
+    else if (r < 0.16) out.push(CARD.e());
+    else out.push(CARD.num(pick([1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 0])));
+  }
+  function primary(inInt) {
+    if (inInt && rnd() < 0.55) { out.push(CARD.x()); return; }
+    if (!inInt && level >= 2 && rnd() < 0.1) { out.push(CARD.num(pick([3, 4, 5]))); out.push(CARD.fact()); return; }
+    if (!inInt && level >= 2 && rnd() < 0.1) { out.push(CARD.num(pick([4, 5, 6, 7]))); out.push(CARD.op("C")); out.push(CARD.num(pick([2, 3]))); return; }
+    if (!inInt && !usedInt && level >= 3 && rnd() < 0.35) { rnd() < 0.5 ? integral() : derivative(); return; }
+    num();
+  }
+  function integral() {
+    usedInt = true;
+    out.push(CARD.int());
+    const u = rnd();
+    out.push(u < 0.3 ? CARD.pi() : CARD.num(pick([1, 2, 3])));
+    expr(true, 1);
+    out.push(CARD.dx());
+  }
+  function derivative() {
+    usedInt = true;
+    out.push(CARD.diff());
+    if (rnd() < 0.6) {
+      const tpl = pick([
+        () => [CARD.x(), CARD.op("^"), CARD.num(2)],
+        () => [CARD.x(), CARD.op("^"), CARD.num(3)],
+        () => [CARD.fn("sin"), CARD.x()],
+        () => [CARD.fn("cos"), CARD.x()],
+        () => [CARD.fn("ln"), CARD.x()],
+        () => [CARD.e(), CARD.op("^"), CARD.x()],
+        () => [CARD.num(pick([2, 3, 4])), CARD.op("×"), CARD.x(), CARD.op("^"), CARD.num(2)],
+      ]);
+      tpl().forEach(c => out.push(c));
+      if (rnd() < 0.3) { out.push(CARD.op(pick(["+", "−"]))); term(true, 1); }
+    } else expr(true, 1);
+    out.push(CARD.at());
+    const u = rnd();
+    out.push(u < 0.25 ? CARD.pi() : CARD.num(pick([0, 1, 2, 3])));
+  }
+  function unary(inInt, d) {
+    if (d < 2 && rnd() < (level === 1 ? 0.45 : 0.35)) {
+      const f = pick(fnPool);
+      out.push(CARD.fn(f));
+      if (!inInt && rnd() < 0.7) { pick(NICE_ARGS[f]).forEach(mk => out.push(mk())); }
+      else unary(inInt, d + 1);
+      return;
+    }
+    primary(inInt);
+  }
+  function factor(inInt, d) {
+    unary(inInt, d);
+    if (level >= 2 && rnd() < 0.2) { out.push(CARD.op("^")); out.push(CARD.num(pick([2, 2, 3]))); }
+  }
+  function term(inInt, d) {
+    factor(inInt, d);
+    if (rnd() < 0.45) { out.push(CARD.op(pick(["×", "÷"]))); factor(inInt, d); }
+  }
+  function expr(inInt, d) {
+    term(inInt, d);
+    const extra = rnd() < 0.7 ? 1 : rnd() < 0.5 ? 2 : 0;
+    for (let k = 0; k < extra; k++) { out.push(CARD.op(pick(["+", "−"]))); term(inInt, d); }
+  }
+  expr(false, 0);
+  return out;
+}
+
+// 「+ 0」「× 1」のような水増しの項がある式を見分ける
+function isPadded(ast) {
+  let bad = false;
+  const X = 1.37;
+  (function walk(n) {
+    if (bad || !n) return;
+    if (n.k === "bin" && (n.op === "+" || n.op === "−")) {
+      const items = [];
+      (function f(m) { if (m.k === "bin" && (m.op === "+" || m.op === "−")) { f(m.l); f(m.r); } else items.push(m); })(n);
+      if (items.some(t => Math.abs(evaluate(t, X)) < 1e-9)) bad = true;
+      items.forEach(walk); return;
+    }
+    if (n.k === "bin" && (n.op === "×" || n.op === "÷")) {
+      const items = [];
+      (function f(m) { if (m.k === "bin" && (m.op === "×" || m.op === "÷")) { f(m.l); f(m.r); } else items.push(m); })(n);
+      if (items.some(t => { const v = evaluate(t, X); return Math.abs(v) < 1e-9 || Math.abs(v - 1) < 1e-9; })) bad = true;
+      items.forEach(walk); return;
+    }
+    if (n.k === "bin") { walk(n.l); walk(n.r); return; }
+    if (n.k === "fn") walk(n.a);
+    if (n.k === "int") { walk(n.up); walk(n.body); if (Math.abs(evaluate(n.body, X)) < 1e-9) bad = true; }
+    if (n.k === "diff") { walk(n.pt); walk(n.body); }
+    if (n.k === "fact") walk(n.a);
+  })(ast);
+  return bad;
+}
+
+const LEVELS = {
+  1: { min: 4, max: 5 },
+  2: { min: 6, max: 7 },
+  3: { min: 7, max: 9 },
+};
+const levelFor = stage => stage <= 3 ? 1 : stage <= 7 ? 2 : 3;
+
+async function makePuzzle(stage) {
+  const level = levelFor(stage);
+  const { min, max } = LEVELS[level];
+  for (let tries = 0; tries < 20000; tries++) {
+    if (tries % 50 === 0) await new Promise(r => setTimeout(r, 0));
+    const cards = generate(level);
+    if (cards.length < min || cards.length > max) continue;
+    const special = cards.some(c => c.k === "fn" || c.k === "int" || c.k === "diff" || c.k === "post" || c.s === "^" || c.s === "C");
+    if (!special) continue;
+    if (level >= 3 && !cards.some(c => c.k === "int" || c.k === "diff") && rnd() < 0.75) continue;
+    let ast;
+    try { ast = parse(cards); } catch (e) { continue; }
+    const v = evaluate(ast, 0);
+    if (!Number.isFinite(v)) continue;
+    const nice = niceTarget(v);
+    if (!nice) continue;
+    if (nice.kind === "int" && rnd() < (level === 1 ? 0.3 : 0.55)) continue;
+    if (nice.kind === "zero" && rnd() < 0.9) continue;
+    const t = v;
+    if (isPadded(ast) && rnd() < 0.9) continue;
+    const sols = countSolutions(cards, t, 2);
+    if (sols.size !== 1) continue;
+    return { cards: shuffle(cards.map((c, id) => ({ ...c, id }))), answer: cards, target: t, targetHtml: nice.html };
+  }
+  // 念のための予備問題
+  const cards = [CARD.num(7), CARD.op("−"), CARD.fn("cos"), CARD.pi()];
+  return { cards: shuffle(cards.map((c, id) => ({ ...c, id }))), answer: cards, target: 8, targetHtml: "8" };
+}
+
+// 答えを「きれいな形」で表せるか：整数・分数・π・√・e
+const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+const fracHtml = (p, q, unit = "") => {
+  const sign = p < 0 ? "−" : "";
+  const P = Math.abs(p);
+  const num = unit ? (P === 1 ? unit : P + unit) : String(P);
+  return `${sign}<span class="frac"><span>${num}</span><span>${q}</span></span>`;
+};
+function asFraction(v, maxQ, maxP) {
+  for (let q = 1; q <= maxQ; q++) {
+    const p = Math.round(v * q);
+    if (Math.abs(v * q - p) < 1e-8 && Math.abs(p) <= maxP && gcd(p, q) === 1) return [p, q];
+  }
+  return null;
+}
+function niceTarget(v) {
+  if (!Number.isFinite(v)) return null;
+  if (Math.abs(v) < 1e-9) return { kind: "zero", html: "0" };
+  let f = asFraction(v, 12, 99);
+  if (f) {
+    const [p, q] = f;
+    if (q === 1) return { kind: "int", html: String(p).replace("-", "−") };
+    return { kind: "frac", html: fracHtml(p, q) };
+  }
+  f = asFraction(v / Math.PI, 6, 12);
+  if (f) {
+    const [p, q] = f;
+    const pi = "<i>π</i>";
+    if (q === 1) return { kind: "pi", html: (p < 0 ? "−" : "") + (Math.abs(p) === 1 ? "" : Math.abs(p)) + pi };
+    return { kind: "pi", html: fracHtml(p, q, pi) };
+  }
+  // a√b
+  const sq = v * v, n = Math.round(sq);
+  if (Math.abs(sq - n) < 1e-7 && n >= 2 && n <= 300) {
+    let a = 1, b = n;
+    for (let k = 2; k * k <= b; k++) while (b % (k * k) === 0) { b /= k * k; a *= k; }
+    if (b > 1) return { kind: "root", html: (v < 0 ? "−" : "") + (a > 1 ? a : "") + `√<span class="ov">${b}</span>` };
+  }
+  // 有理数 + (係数)×(π, √2, √3, e) の形
+  const ratHtml = ([p, q]) => q === 1 ? String(Math.abs(p)) : fracHtml(Math.abs(p), q);
+  for (const [c, ch] of [[Math.PI, "<i>π</i>"], [Math.SQRT2, `√<span class="ov">2</span>`], [Math.sqrt(3), `√<span class="ov">3</span>`], [Math.E, "<i>e</i>"]]) {
+    for (const k of [1, -1, 2, -2, 3, -3, 0.5, -0.5]) {
+      const rest = asFraction(v - k * c, 6, 99);
+      if (!rest || rest[0] === 0) continue;
+      const K = Math.abs(k);
+      const coef = K === 1 ? ch : K === 0.5 ? fracHtml(1, 2, ch) : K + ch;
+      const head = (rest[0] < 0 ? "−" : "") + ratHtml(rest);
+      return { kind: "mix", html: `${head} ${k > 0 ? "+" : "−"} ${coef}` };
+    }
+  }
+  // e の整数倍・累乗
+  f = asFraction(v / Math.E, 1, 9);
+  if (f) return { kind: "e", html: (f[0] < 0 ? "−" : "") + (Math.abs(f[0]) === 1 ? "" : Math.abs(f[0])) + "<i>e</i>" };
+  for (const k of [2, 3, -1, -2]) {
+    if (Math.abs(v - Math.exp(k)) < 1e-8) return { kind: "e", html: k > 0 ? `<i>e</i><sup>${k}</sup>` : fracHtml(1, k === -1 ? "<i>e</i>" : "<i>e</i><sup>2</sup>") };
+  }
+  return null;
+}
+
+function shuffle(a) {
+  const b = a.slice();
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  return b;
+}
+
+// ===================================================================
+//  表示用：式を数式っぽく描く
+// ===================================================================
+function render(n, parentPrec = 0, side = "") {
+  switch (n.k) {
+    case "num": return n.s === "π" || n.s === "e" ? `<i>${n.s}</i>` : n.s;
+    case "x": return "<i>x</i>";
+    case "fn": {
+      const inner = render(n.a);
+      if (n.f === "√") return `√(${inner})`;
+      if (n.f === "|·|") return `|${inner}|`;
+      if (n.f === "log₂") return `log<sub>2</sub>(${inner})`;
+      return `${n.f}(${inner})`;
+    }
+    case "fact": {
+      const inner = render(n.a);
+      return (n.a.k === "num" ? inner : `(${inner})`) + "!";
+    }
+    case "diff":
+      return `<span class="frac"><span><i>d</i></span><span><i>dx</i></span></span>(${render(n.body)})<span class="at">|<sub><i>x</i>=${render(n.pt)}</sub></span>`;
+    case "int":
+      return `<span class="int-sign">∫</span><sub>0</sub><sup>${render(n.up)}</sup> ${render(n.body)} <i>dx</i>`;
+    case "bin": {
+      const p = PREC[n.op];
+      if (n.op === "C") {
+        const simple = n.l.k === "num" && n.r.k === "num";
+        return simple ? `<sub>${render(n.l)}</sub>C<sub>${render(n.r)}</sub>` : `C(${render(n.l)}, ${render(n.r)})`;
+      }
+      if (n.op === "^") {
+        let base = render(n.l, 3, "l");
+        if (n.l.k !== "num" && n.l.k !== "x") base = `(${base})`;
+        return `${base}<sup>${render(n.r)}</sup>`;
+      }
+      const s = `${render(n.l, p, "l")} ${n.op} ${render(n.r, p, "r")}`;
+      const needParen = p < parentPrec || (p === parentPrec && side === "r" && parentPrec <= 2);
+      return needParen ? `(${s})` : s;
+    }
+  }
+  return "";
+}
+
+// ===================================================================
+//  ゲーム
+// ===================================================================
 const $ = id => document.getElementById(id);
-const G = { stage: 1, lives: 3, wins: 0, used: [], best: 0, me: null, foe: null, candidate: null, busy: false, over: false };
-try { G.best = Number(localStorage.getItem("mojiBattleBest")) || 0; } catch (e) {}
-
-function power() { return 1 + 0.06 * G.wins; }
-
-function makeFighter(a, scale) {
-  const s = a.stats;
-  const f = {
-    ch: a.ch, element: a.element,
-    maxHp: Math.round(s.hp * scale), atk: Math.round(s.atk * scale), def: Math.round(s.def * scale),
-    spd: Math.round(s.spd * scale), mag: Math.round(s.mag * scale), crit: s.crit, magicCd: 0, guard: false,
-  };
-  f.hp = f.maxHp;
-  return f;
-}
-
-async function spawnEnemy() {
-  const ch = G.stage <= ENEMY_LINE.length
-    ? ENEMY_LINE[G.stage - 1]
-    : Array.from(REF_CHARS)[hashStr("s" + G.stage) % Array.from(REF_CHARS).length];
-  const a = await analyze(ch);
-  const scale = 0.72 + 0.1 * (G.stage - 1);
-  G.foe = makeFighter(a, scale);
-  renderFighter("foe", G.foe);
-}
-
-// ================= 描画 =================
-function chip(el) { return `<span class="chip el-${el}">${el}</span>`; }
-
-function renderFighter(side, f) {
-  const glyph = $(side + "Glyph");
-  glyph.textContent = f ? f.ch : "？";
-  glyph.className = "glyph" + (f ? "" : " empty");
-  $(side + "El").innerHTML = f ? chip(f.element) : "";
-  updateHp(side, f);
-  $(side + "Stats").innerHTML = f
-    ? [["攻撃", f.atk], ["防御", f.def], ["素早", f.spd], ["魔力", f.mag]].map(([k, v]) => `<span>${k}<b>${v}</b></span>`).join("")
-    : "";
-  renderMatchup();
-}
-
-function updateHp(side, f) {
-  const ratio = f ? Math.max(0, f.hp / f.maxHp) : 1;
-  $(side + "HpBar").firstElementChild.style.width = ratio * 100 + "%";
-  $(side + "HpBar").classList.toggle("low", ratio < 0.3);
-  $(side + "Hp").textContent = f ? `${Math.max(0, f.hp)} / ${f.maxHp}` : "—";
-}
-
-function elemMult(a, d) {
-  if (BEATS[a] === d) return 1.5;
-  if (BEATS[d] === a) return 0.75;
-  if ((a === "光" && d === "闇") || (a === "闇" && d === "光")) return 1.5;
-  return 1;
-}
-
-function renderMatchup() {
-  const me = G.me || (G.candidate && { element: G.candidate.element });
-  const foe = G.foe;
-  if (!me || !foe) { $("matchup").innerHTML = foe ? `敵の属性は ${chip(foe.element)}。有利な属性の文字を探そう。` : ""; return; }
-  const m1 = elemMult(me.element, foe.element), m2 = elemMult(foe.element, me.element);
-  const fmt = m => m > 1 ? `<strong>×${m}</strong>` : `×${m}`;
-  $("matchup").innerHTML = `相性　あなた→敵 ${fmt(m1)}　／　敵→あなた ${fmt(m2)}`;
-}
-
-function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-
-function drawBitmap(a) {
-  const c = $("bitmap"), x = c.getContext("2d");
-  const img = x.createImageData(N, N);
-  const ink = hexToRgb(cssVar("--ink")), accent = hexToRgb(cssVar("--stamp"));
-  const at = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : a.bits[j * N + i];
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const p = (j * N + i) * 4;
-    if (!at(i, j)) { img.data[p + 3] = 0; continue; }
-    const l = at(i - 1, j), r = at(i + 1, j), u = at(i, j - 1), d = at(i, j + 1);
-    const corner = !(l && r && u && d) && (l ^ r) && (u ^ d);
-    const col = corner ? accent : ink;
-    img.data[p] = col[0]; img.data[p + 1] = col[1]; img.data[p + 2] = col[2]; img.data[p + 3] = 255;
-  }
-  x.clearRect(0, 0, N, N);
-  x.putImageData(img, 0, 0);
-}
-
-function hexToRgb(h) {
-  h = h.replace("#", "");
-  if (h.length === 3) h = h.split("").map(c => c + c).join("");
-  const n = parseInt(h, 16);
-  return [n >> 16 & 255, n >> 8 & 255, n & 255];
-}
-
-function drawRadar(a) {
-  const c = $("radar"), x = c.getContext("2d");
-  const W = c.width, cx = W / 2, cy = W / 2 + 6, R = W * 0.32;
-  x.clearRect(0, 0, W, W);
-  const labels = [["HP", a.stats.hp / 140], ["攻撃", a.stats.atk / 40], ["防御", a.stats.def / 26], ["素早さ", a.stats.spd / 34], ["魔力", a.stats.mag / 40]];
-  const pt = (i, r) => { const t = -Math.PI / 2 + i * 2 * Math.PI / 5; return [cx + Math.cos(t) * r, cy + Math.sin(t) * r]; };
-  x.strokeStyle = cssVar("--grid"); x.lineWidth = 1.5;
-  for (const k of [0.33, 0.66, 1]) {
-    x.beginPath(); for (let i = 0; i < 5; i++) { const [px, py] = pt(i, R * k); i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath(); x.stroke();
-  }
-  const color = cssVar(`--${{ 火: "fire", 水: "water", 木: "wood", 土: "earth", 光: "light", 闇: "dark" }[a.element]}`);
-  x.beginPath();
-  labels.forEach(([, v], i) => { const [px, py] = pt(i, R * Math.min(1, v)); i ? x.lineTo(px, py) : x.moveTo(px, py); });
-  x.closePath(); x.globalAlpha = .3; x.fillStyle = color; x.fill(); x.globalAlpha = 1; x.strokeStyle = color; x.lineWidth = 3; x.stroke();
-  x.fillStyle = cssVar("--muted"); x.font = '700 22px "Zen Kaku Gothic New", sans-serif'; x.textAlign = "center"; x.textBaseline = "middle";
-  labels.forEach(([l], i) => { const [px, py] = pt(i, R + 30); x.fillText(l, px, py); });
-}
-
-function renderAnalysis(a) {
-  $("analysisBox").hidden = false;
-  drawBitmap(a);
-  drawRadar(a);
-  $("features").innerHTML = FEATURE_KEYS.map(k => {
-    const [label, to] = FEATURE_LABELS[k];
-    const v = Math.round(a.vec[k] * 100);
-    return `<div class="feat"><span>${label} <span class="to">→${to}</span></span><div class="track"><div style="width:${v}%"></div></div><span class="val">${v}</span></div>`;
-  }).join("") +
-    `<div class="feat"><span>判定属性</span><span>${chip(a.element)} <span class="to">（類似度 ${a.sims[0][1].toFixed(2)}）</span></span><span></span></div>`;
-  $("bonuses").innerHTML = a.bonuses.map(b => `<span class="bonus">${b}</span>`).join("");
-  // プレビューとして自分側に表示
-  const preview = makeFighter(a, power());
-  renderFighter("me", preview);
-}
+const FOES = [
+  ["Σ", "総和の番人"], ["Δ", "差分の亡霊"], ["π", "円周の化身"], ["∂", "偏微の小鬼"], ["∇", "勾配の獣"],
+  ["Ω", "終端の騎士"], ["λ", "固有の魔導士"], ["∞", "無限の竜"], ["ℵ", "濃度の王"], ["Φ", "黄金比の巫女"],
+];
+const G = { stage: 1, hp: 3, score: 0, best: 0, puzzle: null, placed: [], hints: 0, solved: false, generating: false };
+try { G.best = Number(localStorage.getItem("uniqueSolveBest")) || 0; } catch (e) {}
 
 function renderMeta() {
   $("stage").textContent = G.stage;
-  $("lives").textContent = "●".repeat(G.lives) + "○".repeat(3 - G.lives);
+  $("hearts").textContent = "●".repeat(Math.max(0, G.hp)) + "○".repeat(3 - Math.max(0, G.hp));
+  $("score").textContent = G.score;
   $("best").textContent = G.best;
-  $("used").innerHTML = G.used.length ? "使用済み：" + G.used.map(c => `<span>${c}</span>`).join("") : "";
 }
 
-function log(msg, cls = "sys") {
-  const p = document.createElement("p");
-  p.className = cls; p.textContent = msg;
-  $("log").appendChild(p);
-  $("log").scrollTop = $("log").scrollHeight;
+function cardEl(c, onClick) {
+  const b = document.createElement("button");
+  b.className = "card " + (c.cls || c.k);
+  b.textContent = c.s;
+  b.setAttribute("aria-label", c.s);
+  b.addEventListener("click", onClick);
+  return b;
 }
 
-function popup(side, text, heal) {
-  const cell = $(side + "Glyph").parentElement;
-  const s = document.createElement("span");
-  s.className = "pop" + (heal ? " heal" : "");
-  s.textContent = text;
-  cell.appendChild(s);
-  setTimeout(() => s.remove(), 900);
-  if (!heal) { const g = $(side + "Glyph"); g.classList.remove("hit"); void g.offsetWidth; g.classList.add("hit"); }
+function renderBoard() {
+  const p = G.puzzle;
+  if (!p) return;
+  const slots = $("slots"), hand = $("hand");
+  slots.innerHTML = ""; hand.innerHTML = "";
+  if (!G.placed.length) {
+    const ph = document.createElement("span");
+    ph.className = "placeholder";
+    ph.textContent = "ここに式ができます";
+    slots.appendChild(ph);
+  }
+  G.placed.forEach((c, idx) => {
+    const el = cardEl(c, () => {
+      if (G.solved || idx < G.hints) return;
+      G.placed.splice(idx, 1);
+      renderBoard();
+    });
+    if (idx < G.hints) el.classList.add("fixed");
+    slots.appendChild(el);
+  });
+  const eq = document.createElement("span");
+  eq.className = "eq";
+  eq.innerHTML = "= " + p.targetHtml;
+  slots.appendChild(eq);
+
+  const placedIds = new Set(G.placed.map(c => c.id));
+  p.cards.forEach(c => {
+    const el = cardEl(c, () => {
+      if (G.solved || placedIds.has(c.id)) return;
+      G.placed.push(c);
+      renderBoard();
+    });
+    if (placedIds.has(c.id)) { el.classList.add("used"); el.tabIndex = -1; }
+    hand.appendChild(el);
+  });
+
+  $("countInfo").textContent = `${G.placed.length} / ${p.cards.length} 枚`;
+  renderReading();
+  const full = G.placed.length === p.cards.length;
+  $("submitBtn").disabled = !full || G.solved;
+  $("hintBtn").disabled = G.solved || G.hints >= p.answer.length - 1;
+  $("clearBtn").disabled = G.solved;
+  $("passBtn").disabled = G.solved;
 }
 
-// ================= 入力・解析 =================
-$("entryForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  if (G.me) return;
-  const ch = firstGrapheme($("charInput").value);
-  $("error").textContent = "";
-  $("fightBtn").disabled = true;
-  if (!ch) { $("error").textContent = "文字を一文字入力してください。"; return; }
-  if (G.used.includes(ch)) { $("error").textContent = `「${ch}」はもう戦わせました。別の文字を選んでください。`; return; }
-  const a = await analyze(ch);
-  if (!a) { $("error").textContent = `「${ch}」は形が読み取れませんでした（空白や表示できない文字です）。`; G.candidate = null; return; }
-  G.candidate = a;
-  renderAnalysis(a);
-  $("fightBtn").disabled = false;
-});
+function renderReading() {
+  const r = $("reading");
+  if (!G.placed.length) { r.innerHTML = `<span class="reading-error">カードを並べると、ここに読み方が出ます</span>`; return; }
+  try {
+    const ast = parse(G.placed);
+    r.innerHTML = render(ast);
+  } catch (e) {
+    const done = G.placed.length === G.puzzle.cards.length;
+    r.innerHTML = `<span class="reading-error">${done ? "式になっていません：" + e.message : "（並べている途中）" + (e.message.includes("途中で終わって") ? "" : "　" + e.message)}</span>`;
+  }
+}
 
-$("fightBtn").addEventListener("click", () => {
-  if (!G.candidate) return;
-  G.me = makeFighter(G.candidate, power());
-  G.used.push(G.candidate.ch);
-  G.candidate = null;
-  renderFighter("me", G.me);
+function feedback(msg, cls = "") {
+  $("feedback").innerHTML = msg;
+  $("feedback").className = "feedback " + cls;
+}
+
+async function newPuzzle() {
+  G.generating = true;
+  G.puzzle = null; G.placed = []; G.hints = 0; G.solved = false;
+  $("hand").innerHTML = `<span class="loading">問題を作っています…（解が1つだけか全探索で確認中）</span>`;
+  $("slots").innerHTML = ""; $("reading").innerHTML = "";
+  $("target").textContent = "?";
+  ["submitBtn", "hintBtn", "clearBtn", "passBtn"].forEach(id => $(id).disabled = true);
+  $("nextBtn").hidden = true;
+  const [glyph, name] = FOES[(G.stage - 1) % FOES.length];
+  $("foeGlyph").textContent = glyph;
+  $("foeGlyph").className = "foe-glyph";
+  $("foeName").textContent = name;
+  const lv = levelFor(G.stage);
+  $("foeSub").textContent = `難しさ ${"★".repeat(lv)}${"☆".repeat(3 - lv)}　封印数ちょうどの式をぶつけると倒せる`;
+  G.puzzle = await makePuzzle(G.stage);
+  G.generating = false;
+  $("target").innerHTML = G.puzzle.targetHtml;
   renderMeta();
-  $("pickPanel").hidden = true;
-  $("rulesPanel").hidden = true;
-  $("battlePanel").hidden = false;
-  $("commands").hidden = false;
-  $("afterBattle").hidden = true;
-  $("log").innerHTML = "";
-  log(`第${G.stage}戦　「${G.me.ch}」(${G.me.element}) vs 「${G.foe.ch}」(${G.foe.element})`);
-  if (G.foe.spd > G.me.spd) {
-    log(`「${G.foe.ch}」の方が素早い！`);
-    G.busy = true;
-    setTimeout(async () => { await act(G.foe, G.me, enemyChoice()); afterRound(); }, 500);
-  }
-  updateCommands();
-});
-
-// ================= 戦闘 =================
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const vary = () => 0.9 + Math.random() * 0.2;
-
-function updateCommands() {
-  $("magicBtn").disabled = G.me && G.me.magicCd > 0;
-  $("magicBtn").querySelector("small").textContent = G.me && G.me.magicCd > 0 ? "詠唱の反動で使えない" : "魔力・防御無視";
-  document.querySelectorAll("#commands button").forEach(b => { if (b !== $("magicBtn")) b.disabled = G.busy; });
-  if (G.busy) $("magicBtn").disabled = true;
+  renderBoard();
 }
 
-function enemyChoice() {
-  const f = G.foe, m = G.me;
-  if (f.hp < f.maxHp * 0.3 && Math.random() < 0.2) return "guard";
-  const phys = Math.max(1, f.atk - m.def * 0.6);
-  const magic = f.mag * 0.85;
-  if (f.magicCd === 0 && magic > phys * 1.05) return "magic";
-  return "attack";
-}
-
-async function act(user, target, cmd) {
-  const isMe = user === G.me;
-  const side = isMe ? "foe" : "me";
-  const cls = isMe ? "me" : "foe";
-  user.guard = false;
-  if (user.magicCd > 0) user.magicCd--;
-  if (cmd === "guard") {
-    user.guard = true;
-    const heal = Math.min(user.maxHp - user.hp, Math.round(user.maxHp * 0.08));
-    user.hp += heal;
-    updateHp(isMe ? "me" : "foe", user);
-    log(`「${user.ch}」は身を守った。HP +${heal}`, cls);
-    if (heal) popup(isMe ? "me" : "foe", "+" + heal, true);
-    return;
-  }
-  const evade = Math.min(0.3, Math.max(0, (target.spd - user.spd) * 0.015)) + 0.03;
-  if (Math.random() < evade) { log(`「${user.ch}」の攻撃！ しかし「${target.ch}」はかわした！`, cls); popup(side, "MISS"); return; }
-  const mult = elemMult(user.element, target.element);
-  let dmg, label;
-  if (cmd === "magic") {
-    dmg = user.mag * 0.85 * vary();
-    user.magicCd = 2;
-    label = "まほう";
-  } else {
-    dmg = Math.max(1, user.atk * vary() - target.def * 0.6);
-    label = "攻撃";
-  }
-  const crit = cmd === "attack" && Math.random() < user.crit;
-  if (crit) dmg *= 1.6;
-  dmg *= mult;
-  if (target.guard) dmg *= 0.5;
-  dmg = Math.max(1, Math.round(dmg));
-  target.hp = Math.max(0, target.hp - dmg);
-  updateHp(side, target);
-  popup(side, "-" + dmg);
-  let note = crit ? " 会心の一撃！" : "";
-  if (mult > 1) note += " 効果はばつぐんだ！";
-  if (mult < 1) note += " いまひとつのようだ。";
-  log(`「${user.ch}」の${label}！ 「${target.ch}」に ${dmg} のダメージ。${note}`, cls);
-}
-
-$("commands").addEventListener("click", async e => {
-  const b = e.target.closest("button");
-  if (!b || b.disabled || G.busy || !G.me) return;
-  G.busy = true; updateCommands();
-  await act(G.me, G.foe, b.dataset.cmd);
-  if (await checkEnd()) return;
-  await sleep(550);
-  await act(G.foe, G.me, enemyChoice());
-  afterRound();
-});
-
-async function afterRound() {
-  if (await checkEnd()) return;
-  G.busy = false;
-  updateCommands();
-}
-
-async function checkEnd() {
-  if (G.foe.hp <= 0) {
-    $("foeGlyph").classList.add("down");
-    G.wins++;
-    log(`「${G.foe.ch}」をたおした！ 筆力が上がった（次の文字の能力 ×${power().toFixed(2)}）`, "me");
-    G.best = Math.max(G.best, G.stage);
-    try { localStorage.setItem("mojiBattleBest", G.best); } catch (e) {}
-    G.stage++;
-    finishBattle("次の敵へ");
+function damagePlayer(msg) {
+  G.hp--;
+  renderMeta();
+  if (G.hp <= 0) {
+    G.solved = true;
+    const ans = render(parse(G.puzzle.answer));
+    feedback(`${msg} 命が尽きた……。正解は <span class="math">${ans}</span> でした。記録：第${G.stage}問・${G.score}点`, "ng");
+    $("reading").innerHTML = ans;
+    $("nextBtn").textContent = "最初から挑戦";
+    $("nextBtn").hidden = false;
+    renderBoardButtons();
     return true;
   }
-  if (G.me.hp <= 0) {
-    $("meGlyph").classList.add("down");
-    G.lives--;
-    if (G.lives <= 0) {
-      G.over = true;
-      log(`「${G.me.ch}」は倒れた……。命が尽きた。記録：第${G.stage}戦まで到達`, "foe");
-      finishBattle("最初から挑戦する");
-    } else {
-      log(`「${G.me.ch}」は倒れた……。命が1つ減った。別の文字で同じ敵に挑もう。`, "foe");
-      finishBattle("別の文字で再挑戦");
-    }
-    return true;
-  }
+  feedback(`${msg} 命が1つ減った。`, "ng");
   return false;
 }
 
-function finishBattle(label) {
-  G.busy = true;
-  $("commands").hidden = true;
-  $("afterBattle").hidden = false;
-  $("nextBtn").textContent = label;
-  renderMeta();
+function stripTags(s) { const d = document.createElement("div"); d.innerHTML = s; return d.textContent; }
+function renderBoardButtons() {
+  ["submitBtn", "hintBtn", "clearBtn", "passBtn"].forEach(id => $(id).disabled = true);
 }
 
+$("submitBtn").addEventListener("click", () => {
+  if (G.solved || !G.puzzle) return;
+  let ast;
+  try { ast = parse(G.placed); }
+  catch (e) { feedback("式になっていません：" + e.message, "ng"); return; }
+  const v = evaluate(ast, 0);
+  if (Number.isFinite(v) && close(v, G.puzzle.target)) {
+    G.solved = true;
+    const gain = Math.max(10, G.puzzle.cards.length * 15 * levelFor(G.stage) - G.hints * 20);
+    G.score += gain;
+    if (G.score > G.best) { G.best = G.score; try { localStorage.setItem("uniqueSolveBest", G.best); } catch (e) {} }
+    $("foeGlyph").classList.add("hit");
+    setTimeout(() => $("foeGlyph").classList.add("down"), 350);
+    feedback(`正解！ ${$("foeName").textContent}を封印した。+${gain}点`, "ok");
+    $("nextBtn").textContent = "次の問題へ";
+    $("nextBtn").hidden = false;
+    renderMeta();
+    renderBoard();
+  } else {
+    const shown = Number.isFinite(v) ? `この式は ${+v.toFixed(4)} になります。` : "この式は計算できません（0で割る・ln の中が0以下 など）。";
+    damagePlayer(`ちがいます。${shown}`);
+  }
+});
+
+$("clearBtn").addEventListener("click", () => {
+  G.placed = G.placed.slice(0, G.hints);
+  renderBoard();
+});
+
+$("hintBtn").addEventListener("click", () => {
+  const p = G.puzzle;
+  if (!p || G.solved) return;
+  G.hints++;
+  // 正解の先頭 hints 枚を固定する（同じ見た目のカードは id を問わない）
+  const pool = p.cards.slice();
+  const fixed = [];
+  for (let k = 0; k < G.hints; k++) {
+    const idx = pool.findIndex(c => c.s === p.answer[k].s);
+    fixed.push(pool.splice(idx, 1)[0]);
+  }
+  G.placed = fixed;
+  feedback(`ヒント：最初の ${G.hints} 枚を置きました。`);
+  renderBoard();
+});
+
+$("passBtn").addEventListener("click", async () => {
+  if (G.solved || !G.puzzle) return;
+  const ans = `<span class="math">${render(parse(G.puzzle.answer))}</span>`;
+  if (damagePlayer(`パスしました。正解は ${ans} でした。`)) return;
+  await newPuzzle();
+  feedback(`パスしました。前の問題の正解は ${ans} でした。命が1つ減った。`, "ng");
+});
+
 $("nextBtn").addEventListener("click", async () => {
-  if (G.over) { Object.assign(G, { stage: 1, lives: 3, wins: 0, used: [], over: false }); }
-  G.me = null; G.busy = false; G.candidate = null;
-  await spawnEnemy();
-  renderFighter("me", null);
+  if (G.hp <= 0) { G.stage = 1; G.hp = 3; G.score = 0; }
+  else G.stage++;
+  feedback("");
   renderMeta();
-  $("battlePanel").hidden = true;
-  $("pickPanel").hidden = false;
-  $("rulesPanel").hidden = false;
-  $("analysisBox").hidden = true;
-  $("fightBtn").disabled = true;
-  $("charInput").value = "";
-  $("charInput").focus();
+  await newPuzzle();
 });
 
-// テーマ変更時に解析図を描き直す
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  if (G.candidate) { drawBitmap(G.candidate); drawRadar(G.candidate); }
-});
-
-// ================= 起動 =================
-(async () => {
-  renderMeta();
-  await calibrate();
-  await spawnEnemy();
-  // 例として「剣」を解析した状態で始める
-  $("entryForm").requestSubmit();
-})();
+renderMeta();
+newPuzzle();
 </script>
 </body>
 </html>
