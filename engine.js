@@ -378,6 +378,176 @@
     return { html: sqrtHtml(inner), text };
   }
 
+
+  // =================================================================
+  //  正確な値：有理数 × π^a × e^b × √c の和として計算する（誤答の値を分数・ルートのまま見せるため）
+  // =================================================================
+  const LIMIT = 1e12;
+  function rat(n, d = 1) {
+    if (d < 0) { n = -n; d = -d; }
+    if (!Number.isInteger(n) || !Number.isInteger(d) || d === 0 || Math.abs(n) > LIMIT || d > LIMIT) throw new Error("too big");
+    const g = gcd(n, d) || 1;
+    return [n / g, d / g];
+  }
+  const radd = (a, b) => rat(a[0] * b[1] + b[0] * a[1], a[1] * b[1]);
+  const rmul = (a, b) => rat(a[0] * b[0], a[1] * b[1]);
+  const rinv = a => { if (a[0] === 0) throw new Error("div0"); return rat(a[1], a[0]); };
+  function squarePart(n) { // n = k² × m（m は平方因子なし）
+    let k = 1, m = n;
+    for (let f = 2; f * f <= m; f++) while (m % (f * f) === 0) { m /= f * f; k *= f; }
+    return [k, m];
+  }
+  // 値は Map: "π指数|e指数|根号の中身" → 有理数
+  const key = (p, q, c) => `${p}|${q}|${c}`;
+  const unkey = k => k.split("|").map(Number);
+  function xConst(r) { const m = new Map(); if (r[0] !== 0) m.set(key(0, 0, 1), r); return m; }
+  function xAddTerm(m, k, r) {
+    const cur = m.get(k);
+    const v = cur ? radd(cur, r) : r;
+    if (v[0] === 0) m.delete(k); else m.set(k, v);
+  }
+  function xAdd(a, b, sign = 1) {
+    const m = new Map(a);
+    for (const [k, r] of b) xAddTerm(m, k, sign > 0 ? r : [-r[0], r[1]]);
+    return m;
+  }
+  function xMul(a, b) {
+    const m = new Map();
+    for (const [ka, ra] of a) {
+      const [pa, qa, ca] = unkey(ka);
+      for (const [kb, rb] of b) {
+        const [pb, qb, cb] = unkey(kb);
+        const [k, c] = squarePart(ca * cb);
+        if (ca * cb > LIMIT) throw new Error("too big");
+        xAddTerm(m, key(pa + pb, qa + qb, c), rmul(rmul(ra, rb), [k, 1]));
+      }
+    }
+    return m;
+  }
+  const isRational = m => [...m.keys()].every(k => k === key(0, 0, 1));
+  const ratOf = m => m.get(key(0, 0, 1)) || [0, 1];
+  // 割り算：分母が1項ならその逆数をかける。√だけの和なら、素因数ごとに符号を反転させた共役をかけて有理化する
+  function xDiv(a, b) {
+    if (b.size === 0) throw new Error("div0");
+    if (b.size === 1) {
+      const [[k, r]] = [...b];
+      const [p, q, c] = unkey(k);
+      const inv = new Map([[key(-p, -q, c), rmul(rinv(r), [1, c])]]);
+      return xMul(a, inv);
+    }
+    if ([...b.keys()].some(k => { const [p, q] = unkey(k); return p !== 0 || q !== 0; })) throw new Error("unsupported");
+    let num = a, den = b;
+    for (let guard = 0; guard < 8 && !isRational(den); guard++) {
+      const c = [...den.keys()].map(k => unkey(k)[2]).find(c => c > 1);
+      let prime = 2;
+      while (c % prime !== 0) prime++;
+      const conj = new Map();
+      for (const [k, r] of den) conj.set(k, unkey(k)[2] % prime === 0 ? [-r[0], r[1]] : r);
+      num = xMul(num, conj); den = xMul(den, conj);
+    }
+    if (!isRational(den)) throw new Error("unsupported");
+    return xMul(num, xConst(rinv(ratOf(den))));
+  }
+  function ratSqrt(r) { // √(n/d) = √(n·d)/d
+    if (r[0] < 0) throw new Error("negative");
+    const [k, m] = squarePart(r[0] * r[1]);
+    return new Map(r[0] === 0 ? [] : [[key(0, 0, m), rat(k, r[1])]]);
+  }
+  function xSqrt(a) {
+    if (a.size === 0) return new Map();
+    if (isRational(a)) return ratSqrt(ratOf(a));
+    // a0 + b√c → √x ± √y（二重根号を外す）
+    if (a.size === 2 && a.has(key(0, 0, 1))) {
+      const a0 = ratOf(a);
+      const [[k2, b]] = [...a].filter(([k]) => k !== key(0, 0, 1));
+      const [p, q, c] = unkey(k2);
+      if (p === 0 && q === 0) {
+        // x + y = a0, xy = b²c/4
+        const disc = radd(rmul(a0, a0), [-b[0] * b[0] * c, b[1] * b[1]]);
+        if (disc[0] >= 0) {
+          const sd = ratSqrt(disc);
+          if (isRational(sd)) {
+            const s = ratOf(sd);
+            const x = rmul(radd(a0, s), [1, 2]), y = rmul(radd(a0, [-s[0], s[1]]), [1, 2]);
+            if (x[0] >= 0 && y[0] >= 0) return xAdd(ratSqrt(x), ratSqrt(y), b[0] > 0 ? 1 : -1);
+          }
+        }
+      }
+    }
+    throw new Error("unsupported");
+  }
+  function exactOf(n) {
+    switch (n.k) {
+      case "num":
+        if (n.s === "π") return new Map([[key(1, 0, 1), [1, 1]]]);
+        if (n.s === "e") return new Map([[key(0, 1, 1), [1, 1]]]);
+        return xConst(rat(n.v));
+      case "paren": return exactOf(n.a);
+      case "fn": {
+        if (n.f === "√") return xSqrt(exactOf(n.a));
+        const v = evaluate(n);
+        if (!Number.isFinite(v)) throw new Error("bad");
+        if (n.f === "|·|") { const a = exactOf(n.a); return v < 0 ? xAdd(new Map(), a, -1) : evaluate(n.a) < 0 ? xAdd(new Map(), a, -1) : a; }
+        const f = asFraction(v, 12, 1e6);
+        if (!f) throw new Error("unsupported");
+        return xConst(f);
+      }
+      case "fact": { const v = evaluate(n); if (!Number.isFinite(v)) throw new Error("bad"); return xConst(rat(v)); }
+      case "bin": {
+        if (n.op === "C") { const v = evaluate(n); if (!Number.isFinite(v)) throw new Error("bad"); return xConst(rat(v)); }
+        const l = exactOf(n.l), r = exactOf(n.r);
+        switch (n.op) {
+          case "+": return xAdd(l, r, 1);
+          case "−": return xAdd(l, r, -1);
+          case "×": return xMul(l, r);
+          case "÷": return xDiv(l, r);
+          case "^": {
+            if (!isRational(r)) throw new Error("unsupported");
+            const [en, ed] = ratOf(r);
+            let base = l;
+            if (ed === 2) base = xSqrt(l);
+            else if (ed !== 1) throw new Error("unsupported");
+            const k = Math.abs(en);
+            if (k > 12) throw new Error("too big");
+            let out = xConst([1, 1]);
+            for (let i = 0; i < k; i++) out = xMul(out, base);
+            return en < 0 ? xDiv(xConst([1, 1]), out) : out;
+          }
+        }
+      }
+    }
+    throw new Error("unsupported");
+  }
+  // 正確な値を、封印数と同じ形の HTML にする（できなければ null）
+  function exactHtml(ast) {
+    let m;
+    try { m = exactOf(ast); } catch (e) { return null; }
+    const v = evaluate(ast);
+    if (Number.isFinite(v)) { // 念のため数値でも一致を確かめる
+      let check = 0;
+      for (const [k, r] of m) { const [p, q, c] = unkey(k); check += r[0] / r[1] * Math.pow(Math.PI, p) * Math.pow(Math.E, q) * Math.sqrt(c); }
+      if (!close(check, v)) return null;
+    }
+    if (m.size === 0) return "0";
+    const terms = [...m].map(([k, r]) => ({ r, p: unkey(k) })).sort((a, b) =>
+      (a.p[0] - b.p[0]) || (a.p[1] - b.p[1]) || (a.p[2] - b.p[2]));
+    let html = "";
+    terms.forEach((t, i) => {
+      const [p, q, c] = t.p;
+      if (p < 0 || q < 0) throw null;
+      let unit = "";
+      if (p) unit += "<i>π</i>" + (p > 1 ? `<sup>${p}</sup>` : "");
+      if (q) unit += "<i>e</i>" + (q > 1 ? `<sup>${q}</sup>` : "");
+      if (c > 1) unit += sqrtHtml(c);
+      const neg = t.r[0] < 0;
+      const abs = [Math.abs(t.r[0]), t.r[1]];
+      const body = unit ? coefHtml(abs, unit) : ratHtml(abs);
+      html += i === 0 ? (neg ? "−" : "") + body : ` ${neg ? "−" : "+"} ${body}`;
+    });
+    return html;
+  }
+  function exactHtmlSafe(ast) { try { return exactHtml(ast); } catch (e) { return null; } }
+
   // =================================================================
   //  表示用：読み取った式をかっこ付きで描く
   // =================================================================
@@ -903,6 +1073,7 @@
   }
 
   const Engine = {
+    exactHtml: exactHtmlSafe,
     CARD, FUNCS, CONFIG, WEIGHTS, cardFromLabel, ParseError, parse, evaluate, valueOf, close, canon, enumerate, analyze,
     niceTarget, nestedHtml, render, renderText, generate, isPadded, parensNeeded, irrationalExposed, intermediates,
     scorePuzzle, makeCandidate, makePuzzle, makePuzzleAsync, makeRng, asFraction,

@@ -463,8 +463,11 @@ $("submitBtn").addEventListener("click", () => {
   } else {
     let shown;
     if (Number.isFinite(v)) {
-      const t = E.niceTarget(v, 999999);
-      shown = `この式は <span class="math">${t ? t.html : +v.toFixed(4)}</span> になります。`;
+      const exact = E.exactHtml(ast);
+      const t = exact ? null : E.niceTarget(v, 999999);
+      shown = exact || t
+        ? `この式は <span class="math">${exact || t.html}</span> になります。`
+        : `この式は <span class="math">${E.render(ast)}</span>（約 ${+v.toPrecision(6)}）になります。`;
     } else shown = "この式は計算できません（0で割る・ルートの中が負・log の中が0以下 など）。";
     damagePlayer(`ちがいます。${shown}`);
   }
