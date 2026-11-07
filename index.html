@@ -192,12 +192,12 @@ details.rules code { font-family: var(--font-math); font-size: 15px; color: var(
     <div class="start">
       <button class="level-card" data-level="easy" id="easyBtn">
         <span class="name">Easy</span>
-        <span class="desc">カード 5〜7 枚。かっこ・分数・ルートの基本を押さえながら解ける問題。</span>
+        <span class="desc">カード 5〜8 枚。かっこ・分数・ルート（簡単な二重根号も）の基本を押さえながら解ける問題。</span>
         <span class="rec">最高得点 <b id="bestEasy">0</b></span>
       </button>
       <button class="level-card" data-level="hard" id="hardBtn">
         <span class="name">Hard</span>
-        <span class="desc">カード 10〜12 枚。分数を経由する式や二重根号など、考えないと解けない問題だけ。</span>
+        <span class="desc">カード 10〜12 枚。二重根号を外して √p ± √q を作り、それを活かして解くような、考えないと解けない問題だけ。</span>
         <span class="rec">最高得点 <b id="bestHard">0</b></span>
       </button>
     </div>
@@ -356,10 +356,20 @@ function feedback(msg, cls = "") {
   $("feedback").className = "feedback " + cls;
 }
 
-function shuffle(a) {
-  const b = a.slice();
-  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
-  return b;
+// 手札の並び：数（小さい順。π・e も値の位置に）→ 演算子 → 関数 → かっこ
+const OP_ORDER = ["+", "−", "×", "÷", "^", "C", "!"];
+const FN_ORDER = ["√", "|·|", "sin", "cos", "tan", "ln", "log", "log₂"];
+function cardKey(c) {
+  if (c.k === "num") return [0, c.v];
+  if (c.k === "op" || c.k === "post") return [1, OP_ORDER.indexOf(c.s)];
+  if (c.k === "fn") return [2, FN_ORDER.indexOf(c.s)];
+  return [3, c.k === "lp" ? 0 : 1];
+}
+function sortHand(a) {
+  return a.slice().sort((x, y) => {
+    const kx = cardKey(x), ky = cardKey(y);
+    return kx[0] - ky[0] || kx[1] - ky[1];
+  });
 }
 
 function answerHtml() {
@@ -387,7 +397,7 @@ async function newPuzzle() {
     console.log(`[${G.level}] score ${p.score} (${p.tag})  ${p.targetText} = ${p.answer.join(" ")}`, p.metrics);
     if (p.others) console.table(p.others);
   }
-  p.hand = shuffle(p.cards.map((s, id) => ({ ...E.cardFromLabel(s), id })));
+  p.hand = sortHand(p.cards.map((s, id) => ({ ...E.cardFromLabel(s), id })));
   G.puzzle = p;
   $("target").innerHTML = p.targetHtml;
   $("foeSub").textContent = `カード ${p.hand.length} 枚　封印数ちょうどの式をぶつけると倒せる`;

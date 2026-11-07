@@ -420,8 +420,8 @@
   //  作問
   // =================================================================
   const CONFIG = {
-    easy: { min: 5, max: 7, pFn: 0.35, pParen: 0.18, pNest: 0.04, pFrac: 0.07, extra1: 0.45, extra2: 0.12, pMul: 0.6, pMul2: 0.2, maxInt: 99, candidates: 30, pickFrom: 2 },
-    hard: { min: 10, max: 12, pFn: 0.32, pParen: 0.3, pNest: 0.06, pFrac: 0.14, extra1: 0.6, extra2: 0.25, pMul: 0.7, pMul2: 0.3, maxInt: 999, candidates: 24, pickFrom: 1 },
+    easy: { min: 5, max: 8, pNestPuzzle: 0.2, nestWeight: 0.35, pFn: 0.35, pParen: 0.18, pNest: 0.04, pFrac: 0.07, extra1: 0.45, extra2: 0.12, pMul: 0.6, pMul2: 0.2, maxInt: 99, candidates: 30, pickFrom: 2 },
+    hard: { min: 10, max: 12, pNestPuzzle: 0.22, nestWeight: 0.45, pFn: 0.32, pParen: 0.3, pNest: 0.06, pFrac: 0.14, extra1: 0.6, extra2: 0.25, pMul: 0.7, pMul2: 0.3, maxInt: 999, candidates: 18, pickFrom: 1 },
   };
 
   // 二重根号を外せる組：√(x² + y²c ± 2xy√c) = x ± y√c
@@ -433,6 +433,63 @@
         if (A <= 20 && B <= 12) NESTS.push({ A, B, c });
       }
     }
+  }
+
+  // 二重根号を外すと √p ± √q になる組：√(p + q ± 2√(pq)) = √p ± √q
+  const PAIRS = [];
+  for (const p of [2, 3, 5, 6, 7]) {
+    for (const q of [1, 2, 3, 5, 6]) {
+      if (q >= p) continue;
+      const B = p * q, sq = Math.round(Math.sqrt(B));
+      if (sq * sq === B || p + q > 13) continue;
+      PAIRS.push({ p, q, A: p + q, B });
+    }
+  }
+
+  // 二重根号の問題：二重根号を外した形（√p ± √q など）を使わないとうまく解けない式を作る
+  function nestedPuzzle(cfg, rnd) {
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    const out = [];
+    const push = c => out.push(c);
+    const hard = cfg.max >= 10;
+    const plus = rnd() < 0.65;
+    // 中身の書き方：「A ± 2 × √B」か「A ± √(4B)」
+    function core(A, B) {
+      push(CARD.fn("√")); push(CARD.lp());
+      push(CARD.num(A)); push(CARD.op(plus ? "+" : "−"));
+      if ((!hard || rnd() < 0.4) && 4 * B <= 99) { push(CARD.fn("√")); push(CARD.num(4 * B)); }
+      else { push(CARD.num(2)); push(CARD.op("×")); push(CARD.fn("√")); push(CARD.num(B)); }
+      push(CARD.rp());
+    }
+    let pq = null;
+    if (hard || rnd() < 0.7) {
+      pq = pick(PAIRS);           // → √p ± √q
+      core(pq.A, pq.B);
+    } else {
+      const t = pick(NESTS);      // → x ± y√c
+      core(t.A, (t.B / 2) * (t.B / 2) * t.c); // √(A ± 2√((B/2)²c))
+    }
+    // 外した形を活かす組み合わせ
+    const r = hard ? rnd() * 0.65 : rnd();
+    if (pq && r < 0.45) {
+      // ÷√r や ×√r（r は p か q）：外した √p ± √q の片方だけが整数に変わる
+      // 例：√(5 + 2√6) ÷ √3 = (√3 + √2) ÷ √3 = 1 + √6/3
+      push(CARD.op(rnd() < 0.6 ? "÷" : "×"));
+      push(CARD.fn("√")); push(CARD.num(rnd() < 0.5 ? pq.p : pq.q));
+    } else if (pq && r < 0.65 && hard) {
+      // ×(√p ∓ √q)：無理数が打ち消し合う
+      push(CARD.op("×")); push(CARD.lp());
+      push(CARD.fn("√")); push(CARD.num(pq.p)); push(CARD.op(plus ? "−" : "+")); push(CARD.fn("√")); push(CARD.num(pq.q));
+      push(CARD.rp());
+    } else if (r < 0.85) {
+      push(CARD.op(pick(["÷", "×"]))); push(CARD.num(pick([2, 3, 4, 6])));
+    }
+    // 長さが足りなければ整数を足し引きする
+    while (out.length < cfg.min) {
+      push(CARD.op(rnd() < 0.5 ? "+" : "−"));
+      push(CARD.num(1 + Math.floor(rnd() * 9)));
+    }
+    return out;
   }
 
   function makeRng(seed) {
@@ -660,7 +717,7 @@
     return { fracNodes, irrNodes, maxAbs };
   }
 
-  const WEIGHTS = { frac: 2.2, irrCancel: 1.6, nonComm: 0.6, breadth: 0.8, decoys: 0.8, swing: 0.6, parens: 1.0, nested: 1.0 };
+  const WEIGHTS = { frac: 2.2, irrCancel: 1.6, nonComm: 0.6, breadth: 0.8, decoys: 0.8, swing: 0.6, parens: 1.0, nested: 1.0, twoRoot: 1.5 };
 
   function scorePuzzle(p) {
     const m = p.metrics;
@@ -675,12 +732,25 @@
     s += W.swing * Math.min(3, Math.log10(Math.max(1, m.swing)));
     s += W.parens * Math.min(2, m.parens);
     s += W.nested * (m.nested ? 1 : 0);
+    s += W.twoRoot * (m.twoRoot ? 1 : 0);
     return Math.round(s * 100) / 100;
   }
 
   // 条件を満たす候補を1つ作る（作れなければ null）
-  function makeCandidate(cfg, rnd) {
-    const cards = generate(cfg, rnd);
+  // 式の中に「ルートの中にルート」があるか
+  function hasDoubleRadical(ast) {
+    let found = false;
+    (function walk(n, inRoot) {
+      if (found || !n) return;
+      if (n.k === "fn" && n.f === "√") { if (inRoot) { found = true; return; } walk(n.a, true); return; }
+      if (n.k === "bin") { walk(n.l, inRoot); walk(n.r, inRoot); }
+      else if (n.k === "fn" || n.k === "fact" || n.k === "paren") walk(n.a, inRoot);
+    })(ast, false);
+    return found;
+  }
+
+  function makeCandidate(cfg, rnd, opts = {}) {
+    const cards = !opts.noNest && rnd() < cfg.pNestPuzzle ? nestedPuzzle(cfg, rnd) : generate(cfg, rnd);
     if (cards.length < cfg.min || cards.length > cfg.max) return null;
     let ast;
     try { ast = parse(cards); } catch (e) { return null; }
@@ -711,7 +781,10 @@
     if (res.solutions !== 1) return null;
 
     const nonComm = ops.filter(o => o === "−" || o === "÷" || o === "^" || o === "C").length;
-    const hasNested = cards.filter(c => c.s === "√").length >= 2 && cards.some(c => c.k === "lp");
+    const hasNested = hasDoubleRadical(ast);
+    // 二重根号を外した √p ± √q に、√r をかける・割る（または (√p ∓ √q) をかける）形
+    const lab = cards.map(c => c.s).join(" ");
+    const twoRoot = hasNested && /\) [÷×] √ \d+|\) × \( √/.test(lab);
     // 二重根号の形で見せる（手札では外した形を作らせる）
     let html = t.html, text = t.text, nestedShown = false;
     const alt = nestedHtml(t);
@@ -736,6 +809,7 @@
         swing: inter.maxAbs / Math.max(1, Math.abs(v)),
         parens,
         nested: hasNested || nestedShown,
+        twoRoot,
       },
     };
     p.score = scorePuzzle(p);
@@ -755,10 +829,11 @@
     const want = opts.candidates || cfg.candidates;
     const deadline = Date.now() + (opts.timeLimit || 4000);
     const found = [];
-    for (let tries = 0; tries < 200000 && found.length < want; tries++) {
+    let seen = 0;
+    for (let tries = 0; tries < 200000 && found.length < want && seen < want * 3; tries++) {
       if (found.length && Date.now() > deadline) break;
-      const c = makeCandidate(cfg, rnd);
-      if (c && accept(found, c, want)) found.push(c);
+      const c = makeCandidate(cfg, rnd, { noNest: nestFull(found, want) });
+      if (c) { seen++; if (accept(found, c, want)) found.push(c); }
     }
     if (!found.length) return fallbackPuzzle();
     const best = choose(found, cfg, rnd);
@@ -768,6 +843,10 @@
   }
 
   // 同じ種類の候補が集まりすぎないようにする（1種類あたり全体の3分の1まで）
+  // 二重根号の候補が十分集まったら、それ以外の候補づくりに時間を回す
+  function nestFull(found, want) {
+    return found.filter(f => f.tag === "nested").length >= Math.ceil(want / 3);
+  }
   function accept(found, c, want) {
     const cap = Math.ceil(want / 3);
     return found.filter(f => f.tag === c.tag).length < cap;
@@ -779,7 +858,14 @@
     const byTag = {};
     for (const f of found) (byTag[f.tag] = byTag[f.tag] || []).push(f);
     const tags = Object.keys(byTag);
-    const list = byTag[tags[Math.floor(rnd() * tags.length)]];
+    // 二重根号は nestWeight の確率で優先し、残りは種類ごとに等確率
+    let tag;
+    if (byTag.nested && rnd() < cfg.nestWeight) tag = "nested";
+    else {
+      const rest = tags.filter(t => t !== "nested" || tags.length === 1);
+      tag = rest[Math.floor(rnd() * rest.length)];
+    }
+    const list = byTag[tag];
     list.sort((a, b) => b.score - a.score);
     return list[Math.floor(rnd() * Math.min(cfg.pickFrom, list.length))];
   }
@@ -798,13 +884,13 @@
     const want = opts.candidates || cfg.candidates;
     const deadline = Date.now() + (opts.timeLimit || 3000);
     const found = [];
-    let tries = 0;
-    while (found.length < want && tries < 200000) {
+    let tries = 0, seen = 0;
+    while (found.length < want && seen < want * 3 && tries < 200000) {
       const sliceEnd = Date.now() + 30;
-      while (Date.now() < sliceEnd && found.length < want && tries < 200000) {
+      while (Date.now() < sliceEnd && found.length < want && seen < want * 3 && tries < 200000) {
         tries++;
-        const c = makeCandidate(cfg, rnd);
-        if (c && accept(found, c, want)) found.push(c);
+        const c = makeCandidate(cfg, rnd, { noNest: nestFull(found, want) });
+        if (c) { seen++; if (accept(found, c, want)) found.push(c); }
       }
       if (found.length && Date.now() > deadline) break;
       await new Promise(r => setTimeout(r, 0));
