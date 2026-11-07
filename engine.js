@@ -590,76 +590,228 @@
   //  作問
   // =================================================================
   const CONFIG = {
-    easy: { min: 5, max: 8, pNestPuzzle: 0.2, nestWeight: 0.35, pFn: 0.35, pParen: 0.18, pNest: 0.04, pFrac: 0.07, extra1: 0.45, extra2: 0.12, pMul: 0.6, pMul2: 0.2, maxInt: 99, candidates: 30, pickFrom: 2 },
-    hard: { min: 10, max: 12, pNestPuzzle: 0.22, nestWeight: 0.45, pFn: 0.32, pParen: 0.3, pNest: 0.06, pFrac: 0.14, extra1: 0.6, extra2: 0.25, pMul: 0.7, pMul2: 0.3, maxInt: 999, candidates: 18, pickFrom: 1 },
+    easy: {
+      min: 5, max: 8, pFn: 0.3, pParen: 0.18, pNest: 0.02, pFrac: 0.07, extra1: 0.45, extra2: 0.12, pMul: 0.6, pMul2: 0.2,
+      maxInt: 99, candidates: 6, pickFrom: 2,
+      types: { nested: 0.2, frac: 0.2, paren: 0.2, irr: 0.15, func: 0.15, mix: 0.1 },
+    },
+    hard: {
+      min: 10, max: 12, pFn: 0.3, pParen: 0.3, pNest: 0.04, pFrac: 0.14, extra1: 0.6, extra2: 0.25, pMul: 0.7, pMul2: 0.3,
+      maxInt: 999, candidates: 6, pickFrom: 1,
+      types: { nested: 0.25, frac: 0.2, paren: 0.15, irr: 0.15, func: 0.15, mix: 0.1 },
+    },
   };
+  const TYPES = ["nested", "frac", "paren", "irr", "func", "mix"];
 
-  // 二重根号を外せる組：√(x² + y²c ± 2xy√c) = x ± y√c
+  // 二重根号の材料：(a√p ± b√q)² = (a²p + b²q) ± 2ab√(pq)
+  //   → √(A ± 2ab√(pq)) = a√p ± b√q。中身の書き方は「k × √m」「2 × √B」「√D」の3通り
   const NESTS = [];
-  for (const c of [2, 3, 5, 6, 7]) {
-    for (let x = 1; x <= 3; x++) {
-      for (let y = 1; y <= 2; y++) {
-        const A = x * x + y * y * c, B = 2 * x * y;
-        if (A <= 20 && B <= 12) NESTS.push({ A, B, c });
+  {
+    const R = [1, 2, 3, 5, 6, 7, 10, 11];
+    const seen = new Set();
+    for (const p of R) for (const q of R) for (const a of [1, 2, 3]) for (const b of [1, 2]) {
+      if (p >= q) continue;
+      const pq = p * q, sq = Math.round(Math.sqrt(pq));
+      if (sq * sq === pq) continue;
+      const A = a * a * p + b * b * q;
+      if (A > 30) continue;
+      // 2ab√(pq) を「k√m」（m は平方因子なし）に
+      let k = 2 * a * b, m = pq;
+      for (let f = 2; f * f <= m; f++) while (m % (f * f) === 0) { m /= f * f; k *= f; }
+      const forms = [];
+      if (k <= 20 && m <= 99) forms.push(["k", k, m]);
+      if (k % 2 === 0 && (k / 2) * (k / 2) * m <= 99) forms.push(["2", 2, (k / 2) * (k / 2) * m]);
+      if (k * k * m <= 99) forms.push(["root", 0, k * k * m]);
+      if (!forms.length) continue;
+      const id = `${A}|${k}|${m}|${a}|${p}|${b}|${q}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      NESTS.push({ A, a, p, b, q, forms });
+    }
+  }
+
+  function makeRng(seed) {
+    if (seed === undefined) return Math.random;
+    let s = seed >>> 0 || 1;
+    return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  }
+
+  // ---- 種類ごとの作り方（テンプレート）----
+  // 手札を cards の配列で返す。足りない枚数は tail() で数を足す
+  function builder(rnd) {
+    const out = [];
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    const d = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
+    const N = n => out.push(CARD.num(n));
+    const O = o => out.push(CARD.op(o));
+    const F = f => out.push(CARD.fn(f));
+    const L = () => out.push(CARD.lp());
+    const Rp = () => out.push(CARD.rp());
+    const PI = () => out.push(CARD.pi());
+    const E_ = () => out.push(CARD.e());
+    return { out, pick, d, N, O, F, L, Rp, PI, E_, rnd };
+  }
+
+  // 二重根号：外した形 a√p ± b√q を活かす
+  function tplNested(cfg, B) {
+    const { pick, d, N, O, F, L, Rp, rnd } = B;
+    const t = pick(NESTS);
+    const plus = rnd() < 0.6;
+    const forms = cfg.max < 10 ? t.forms.filter(f => f[0] === "root" || f[1] === 1) : t.forms;
+    if (!forms.length) return tplNested(cfg, B);
+    const [form, k, m] = pick(forms);
+    F("√"); L(); N(t.A); O(plus ? "+" : "−");
+    if (form === "k") { if (k !== 1) { N(k); O("×"); } F("√"); N(m); }
+    else if (form === "2") { N(2); O("×"); F("√"); N(m); }
+    else { F("√"); N(m); }
+    Rp();
+    const room = cfg.max - B.out.length;
+    const r = rnd();
+    const roots = [t.p, t.q].filter(x => x > 1);
+    if (room < 3) { if (room >= 2 && r < 0.6) { O(pick(["÷", "×", "+", "−"])); N(pick([2, 3, 4, 6])); } return; }
+    if (r < 0.5 && roots.length) { O(rnd() < 0.6 ? "÷" : "×"); F("√"); N(pick(roots)); }
+    else if (r < 0.7 && cfg.max >= 10) {
+      // ×(a√p ∓ b√q)：無理数が打ち消し合う
+      O("×"); L();
+      if (t.a !== 1) { N(t.a); O("×"); }
+      if (t.p === 1) N(1); else { F("√"); N(t.p); }
+      O(plus ? "−" : "+");
+      if (t.b !== 1) { N(t.b); O("×"); }
+      F("√"); N(t.q);
+      Rp();
+    } else if (r < 0.9) { O(pick(["÷", "×"])); N(pick([2, 3, 4, 6])); }
+  }
+
+  // かっこを外すと値が変わる形
+  function tplParen(cfg, B) {
+    const { pick, d, N, O, L, Rp } = B;
+    const pm = () => O(pick(["+", "−"]));
+    switch (Math.floor(B.rnd() * 7)) {
+      case 0: N(d(2, 9)); O("×"); L(); N(d(1, 9)); pm(); N(d(1, 9)); Rp(); break;
+      case 1: L(); N(d(1, 9)); pm(); N(d(1, 9)); Rp(); O(pick(["×", "÷"])); N(d(2, 9)); break;
+      case 2: N(d(2, 9)); O("÷"); L(); N(d(1, 9)); O("−"); N(d(1, 9)); Rp(); break;
+      case 3: L(); N(d(1, 9)); pm(); N(d(1, 9)); Rp(); O("^"); N(pick([2, 3])); break;
+      case 4: N(d(2, 20)); O("−"); L(); N(d(1, 9)); O("−"); N(d(1, 9)); Rp(); O("×"); N(d(2, 9)); break;
+      case 5: L(); N(d(1, 9)); O("+"); N(d(1, 9)); Rp(); O("×"); L(); N(d(1, 9)); O("−"); N(d(1, 9)); Rp(); break;
+      default: L(); N(d(1, 9)); pm(); N(d(1, 9)); Rp(); O("÷"); L(); N(d(1, 9)); pm(); N(d(1, 9)); Rp(); break;
+    }
+  }
+
+  // 無理数どうしが打ち消し合って有理数になる形
+  function tplIrr(cfg, B) {
+    const { pick, d, N, O, F, L, Rp } = B;
+    const NS = [2, 3, 5, 6, 7, 10, 11];
+    switch (Math.floor(B.rnd() * 5)) {
+      case 0: { // (√a + √b)(√a − √b) = a − b
+        const a = pick(NS); let b = pick(NS); if (b === a) b = a === 2 ? 3 : 2;
+        L(); F("√"); N(a); O("+"); F("√"); N(b); Rp(); O("×"); L(); F("√"); N(a); O("−"); F("√"); N(b); Rp();
+        break;
+      }
+      case 1: { // √a × √b が整数
+        const [a, b] = pick([[2, 8], [2, 18], [3, 12], [3, 27], [5, 20], [6, 24], [2, 32], [8, 18], [12, 27], [2, 50], [3, 48]]);
+        F("√"); N(a); O("×"); F("√"); N(b);
+        break;
+      }
+      case 2: { // √a ÷ √b が整数
+        const [a, b] = pick([[8, 2], [18, 2], [27, 3], [50, 2], [12, 3], [48, 3], [32, 2], [20, 5], [24, 6]]);
+        F("√"); N(a); O("÷"); F("√"); N(b);
+        break;
+      }
+      case 3: { // (a + √b)² − 2a√b = a² + b
+        const a = d(1, 3), b = pick(NS);
+        L(); N(a); O("+"); F("√"); N(b); Rp(); O("^"); N(2); O("−"); N(2 * a); O("×"); F("√"); N(b);
+        break;
+      }
+      default: { // (√a + √b)² − 2√(ab) = a + b
+        const a = pick(NS); let b = pick(NS); if (b === a) b = a === 2 ? 3 : 2;
+        L(); F("√"); N(a); O("+"); F("√"); N(b); Rp(); O("^"); N(2); O("−"); N(2); O("×"); F("√"); N(a * b);
+        break;
       }
     }
   }
 
-  // 二重根号を外すと √p ± √q になる組：√(p + q ± 2√(pq)) = √p ± √q
-  const PAIRS = [];
-  for (const p of [2, 3, 5, 6, 7]) {
-    for (const q of [1, 2, 3, 5, 6]) {
-      if (q >= p) continue;
-      const B = p * q, sq = Math.round(Math.sqrt(B));
-      if (sq * sq === B || p + q > 13) continue;
-      PAIRS.push({ p, q, A: p + q, B });
+  // 分数を使わないと解けない形
+  function tplFrac(cfg, B) {
+    const { pick, d, N, O, L, Rp } = B;
+    const nd = q => { let a = d(1, 9); if (a % q === 0) a++; return a; };
+    switch (Math.floor(B.rnd() * 6)) {
+      case 0: { const q1 = pick([2, 3, 4, 6]), q2 = pick([2, 3, 4, 6]); N(nd(q1)); O("÷"); N(q1); O(pick(["+", "−"])); N(nd(q2)); O("÷"); N(q2); break; }
+      case 1: { const q = pick([2, 3, 4, 5]); N(d(2, 9)); O("÷"); L(); N(nd(q)); O("÷"); N(q); Rp(); break; }
+      case 2: { const q = pick([2, 3, 4]); L(); N(nd(q)); O("÷"); N(q); Rp(); O("^"); N(2); O("×"); N(pick([4, 8, 9, 16, 18])); break; }
+      case 3: { const q1 = pick([2, 3, 4, 6]), q2 = pick([2, 3, 4, 6]); L(); N(nd(q1)); O("÷"); N(q1); O(pick(["+", "−"])); N(nd(q2)); O("÷"); N(q2); Rp(); O("×"); N(pick([6, 12, 4, 8])); break; }
+      case 4: { const q = pick([2, 3, 4]); L(); N(nd(q)); O("÷"); N(q); O("+"); N(d(1, 9)); Rp(); O("×"); N(q * d(1, 3)); break; }
+      default: { const q1 = pick([2, 3, 4]), q2 = pick([2, 3, 4]); N(nd(q1)); O("÷"); N(q1); O("÷"); L(); N(nd(q2)); O("÷"); N(q2); Rp(); break; }
     }
   }
 
-  // 二重根号の問題：二重根号を外した形（√p ± √q など）を使わないとうまく解けない式を作る
-  function nestedPuzzle(cfg, rnd) {
-    const pick = a => a[Math.floor(rnd() * a.length)];
-    const out = [];
-    const push = c => out.push(c);
-    const hard = cfg.max >= 10;
-    const plus = rnd() < 0.65;
-    // 中身の書き方：「A ± 2 × √B」か「A ± √(4B)」
-    function core(A, B) {
-      push(CARD.fn("√")); push(CARD.lp());
-      push(CARD.num(A)); push(CARD.op(plus ? "+" : "−"));
-      if ((!hard || rnd() < 0.4) && 4 * B <= 99) { push(CARD.fn("√")); push(CARD.num(4 * B)); }
-      else { push(CARD.num(2)); push(CARD.op("×")); push(CARD.fn("√")); push(CARD.num(B)); }
-      push(CARD.rp());
+  // 関数の中身を組み立てる必要がある形
+  function tplFunc(cfg, B) {
+    const { pick, d, N, O, F, L, Rp, PI, E_ } = B;
+    switch (Math.floor(B.rnd() * 7)) {
+      case 0: { // 三角関数の特別な角：cos(π÷3) = 1/2 など
+        const f = pick(["sin", "cos", "tan"]);
+        const k = f === "tan" ? pick([3, 4, 6]) : pick([3, 4, 6]);
+        F(f); L(); PI(); O("÷"); N(k); Rp();
+        break;
+      }
+      case 1: { // log₂(a + b) で a + b が2の累乗
+        const t = pick([4, 8, 16, 32]); const a = d(1, t - 1);
+        F("log₂"); L(); N(a); O("+"); N(t - a); Rp();
+        break;
+      }
+      case 2: { // log(a × b) で ab が 100 や 1000
+        const [a, b] = pick([[4, 25], [5, 20], [2, 50], [20, 50], [8, 125], [25, 40]]);
+        F("log"); L(); N(a); O("×"); N(b); Rp();
+        break;
+      }
+      case 3: { // ln(e ^ k)
+        F("ln"); L(); E_(); O("^"); N(d(2, 4)); Rp();
+        break;
+      }
+      case 4: { // √(a² + b²)：三平方
+        const [a, b] = pick([[3, 4], [6, 8], [5, 12], [8, 15], [9, 12]]);
+        F("√"); L(); N(a); O("^"); N(2); O("+"); N(b); O("^"); N(2); Rp();
+        break;
+      }
+      case 5: { // |a − b|
+        const a = d(1, 6), b = a + d(2, 8);
+        F("|·|"); L(); N(a); O("−"); N(b); Rp();
+        break;
+      }
+      default: { // log₂(a ÷ b) が負の整数など
+        const [a, b] = pick([[1, 8], [1, 4], [2, 16], [3, 24]]);
+        F("log₂"); L(); N(a); O("÷"); N(b); Rp();
+        break;
+      }
     }
-    let pq = null;
-    if (hard || rnd() < 0.7) {
-      pq = pick(PAIRS);           // → √p ± √q
-      core(pq.A, pq.B);
-    } else {
-      const t = pick(NESTS);      // → x ± y√c
-      core(t.A, (t.B / 2) * (t.B / 2) * t.c); // √(A ± 2√((B/2)²c))
+  }
+
+  // テンプレートのあとに、枚数がそろうまで計算を足す
+  function tail(cfg, B) {
+    const { pick, d, N, O, F, L, Rp, out, rnd } = B;
+    let guard = 0;
+    // 枚数が足りていても、半分くらいは計算を1つ足して形を散らす
+    let extra = out.length < cfg.max - 1 && rnd() < 0.5 ? 1 : 0;
+    while ((out.length < cfg.min || extra-- > 0) && guard++ < 6) {
+      const room = cfg.max - out.length;
+      const r = rnd();
+      if (room >= 4 && r < 0.25) { O(pick(["+", "−", "×", "÷"])); L(); N(d(1, 9)); O(pick(["+", "−"])); N(d(1, 9)); Rp(); }
+      else if (room >= 3 && r < 0.45) { O(pick(["+", "−", "×", "÷"])); N(d(2, 9)); O("^"); N(2); }
+      else if (room >= 3 && r < 0.6) { O(pick(["+", "−", "×"])); F("√"); N(pick([4, 9, 16, 2, 3])); }
+      else if (room >= 3 && r < 0.7) { O(pick(["+", "−", "×", "÷"])); N(d(3, 5)); out.push(CARD.fact()); }
+      else { O(pick(["+", "−", "×", "÷"])); N(d(1, 9)); }
     }
-    // 外した形を活かす組み合わせ
-    const r = hard ? rnd() * 0.65 : rnd();
-    if (pq && r < 0.45) {
-      // ÷√r や ×√r（r は p か q）：外した √p ± √q の片方だけが整数に変わる
-      // 例：√(5 + 2√6) ÷ √3 = (√3 + √2) ÷ √3 = 1 + √6/3
-      push(CARD.op(rnd() < 0.6 ? "÷" : "×"));
-      push(CARD.fn("√")); push(CARD.num(rnd() < 0.5 ? pq.p : pq.q));
-    } else if (pq && r < 0.65 && hard) {
-      // ×(√p ∓ √q)：無理数が打ち消し合う
-      push(CARD.op("×")); push(CARD.lp());
-      push(CARD.fn("√")); push(CARD.num(pq.p)); push(CARD.op(plus ? "−" : "+")); push(CARD.fn("√")); push(CARD.num(pq.q));
-      push(CARD.rp());
-    } else if (r < 0.85) {
-      push(CARD.op(pick(["÷", "×"]))); push(CARD.num(pick([2, 3, 4, 6])));
-    }
-    // 長さが足りなければ整数を足し引きする
-    while (out.length < cfg.min) {
-      push(CARD.op(rnd() < 0.5 ? "+" : "−"));
-      push(CARD.num(1 + Math.floor(rnd() * 9)));
-    }
-    return out;
+  }
+
+  const TEMPLATES = { nested: tplNested, frac: tplFrac, paren: tplParen, irr: tplIrr, func: tplFunc };
+
+  function buildCards(type, cfg, rnd) {
+    if (type === "mix" || !TEMPLATES[type]) return generate(cfg, rnd);
+    const B = builder(rnd);
+    // Hard では前後に別の計算を付けることもある
+    TEMPLATES[type](cfg, B);
+    tail(cfg, B);
+    return B.out;
   }
 
   function makeRng(seed) {
@@ -691,10 +843,11 @@
     }
     function nested() {
       const t = pick(NESTS);
+      const [form, k, m] = t.forms[0];
       push(CARD.fn("√")); push(CARD.lp());
       push(CARD.num(t.A)); push(CARD.op(rnd() < 0.7 ? "+" : "−"));
-      if (t.B !== 1) { push(CARD.num(t.B)); push(CARD.op("×")); }
-      push(CARD.fn("√")); push(CARD.num(t.c));
+      if (form === "root") { push(CARD.fn("√")); push(CARD.num(m)); }
+      else { if (k !== 1) { push(CARD.num(k)); push(CARD.op("×")); } push(CARD.fn("√")); push(CARD.num(m)); }
       push(CARD.rp());
     }
     // かっこの中身：少なくとも2項の和・差
@@ -720,8 +873,8 @@
         const f = pick(["sin", "cos", "tan", "ln", "log", "log₂", "√", "√", "√", "|·|"]);
         push(CARD.fn(f));
         const r = rnd();
-        if (r < 0.6) niceArg(f);
-        else if (r < 0.85 && d < 2) group(d);
+        if (r < 0.3) niceArg(f);
+        else if (r < 0.75 && d < 2) group(d);
         else unary(d + 1);
         return;
       }
@@ -887,7 +1040,7 @@
     return { fracNodes, irrNodes, maxAbs };
   }
 
-  const WEIGHTS = { frac: 2.2, irrCancel: 1.6, nonComm: 0.6, breadth: 0.8, decoys: 0.8, swing: 0.6, parens: 1.0, nested: 1.0, twoRoot: 1.5 };
+  const WEIGHTS = { frac: 2.2, irrCancel: 1.6, nonComm: 0.6, breadth: 0.8, decoys: 0.8, swing: 0.6, parens: 1.0, nested: 1.0, twoRoot: 1.5, builtFunc: 1.2, trivialFunc: 1.0, bigInt: 1.5 };
 
   function scorePuzzle(p) {
     const m = p.metrics;
@@ -903,6 +1056,9 @@
     s += W.parens * Math.min(2, m.parens);
     s += W.nested * (m.nested ? 1 : 0);
     s += W.twoRoot * (m.twoRoot ? 1 : 0);
+    s += W.builtFunc * Math.min(2, m.builtFuncs || 0);
+    s -= W.trivialFunc * (m.trivialFuncs || 0);
+    s -= W.bigInt * (m.bigInt ? 1 : 0);
     return Math.round(s * 100) / 100;
   }
 
@@ -919,13 +1075,51 @@
     return found;
   }
 
+  // 「cos π」「ln e」のように、関数がただの −1・0・1 などの言い換えになっている使い方の数
+  function trivialFuncs(ast) {
+    let n = 0;
+    (function walk(x) {
+      if (!x) return;
+      if (x.k === "fn" && x.a.k === "num" && x.f !== "√" && x.f !== "|·|") n++;
+      if (x.k === "bin") { walk(x.l); walk(x.r); }
+      else if (x.k === "fn" || x.k === "fact" || x.k === "paren") walk(x.a);
+    })(ast);
+    return n;
+  }
+  // 関数の中身が1枚のカードではなく、式を組み立てる必要がある関数の数
+  function builtFuncs(ast) {
+    let n = 0;
+    (function walk(x) {
+      if (!x) return;
+      if (x.k === "fn" && x.a.k === "paren" && nodeCount(x.a) > 1) n++;
+      if (x.k === "bin") { walk(x.l); walk(x.r); }
+      else if (x.k === "fn" || x.k === "fact" || x.k === "paren") walk(x.a);
+    })(ast);
+    return n;
+  }
+  // かっこでくくった部分が分数（整数でない有理数）になっているか
+  function fracGroups(ast) {
+    let n = 0;
+    (function walk(x) {
+      if (!x) return;
+      if (x.k === "paren") { const f = asFraction(evaluate(x.a), 12, 999); if (f && f[1] > 1) n++; }
+      if (x.k === "bin") { walk(x.l); walk(x.r); }
+      else if (x.k === "fn" || x.k === "fact" || x.k === "paren") walk(x.a);
+    })(ast);
+    return n;
+  }
+
+  // 条件を満たす候補を1つ作る（作れなければ null）。type はその候補に求める種類
   function makeCandidate(cfg, rnd, opts = {}) {
-    const cards = !opts.noNest && rnd() < cfg.pNestPuzzle ? nestedPuzzle(cfg, rnd) : generate(cfg, rnd);
+    const type = opts.type || "mix";
+    const cards = buildCards(type, cfg, rnd);
     if (cards.length < cfg.min || cards.length > cfg.max) return null;
     let ast;
     try { ast = parse(cards); } catch (e) { return null; }
     const v = evaluate(ast);
     if (!Number.isFinite(v)) return null;
+    const key = canon(ast);
+    if (opts.avoid && opts.avoid.has(key)) return null; // 最近出した問題と同じ式
 
     // 使っている記号の種類
     const ops = cards.filter(c => c.k === "op").map(c => c.s);
@@ -936,7 +1130,7 @@
     if (cards.some(c => c.k === "fn")) kinds.add("fn");
     if (cards.some(c => c.k === "lp")) kinds.add("paren");
     if (kinds.size === 0) return null;                       // 足し算・引き算だけ
-    if (cfg === CONFIG.hard && kinds.size < 3) return null;   // Hard は3種類以上
+    if (cfg === CONFIG.hard && kinds.size < 2) return null;
 
     const t = niceTarget(v, cfg.maxInt);
     if (!t) return null;
@@ -947,14 +1141,26 @@
     if (irrationalExposed(ast, t.irr)) return null;
 
     const inter = intermediates(ast);
+    const hasNested = hasDoubleRadical(ast);
+    const built = builtFuncs(ast), trivial = trivialFuncs(ast), fracG = fracGroups(ast);
+    const irrCancel = inter.irrNodes > 0 && isNiceRational(v);
+    // 求めた種類の性質を本当に持っているか
+    const ok = {
+      nested: hasNested,
+      frac: inter.fracNodes > 0 || fracG > 0,
+      paren: parens > 0,
+      irr: irrCancel,
+      func: built > 0,
+      mix: true,
+    }[type];
+    if (!ok) return null;
+
     const res = analyze(cards, v, { full: true });
     if (res.solutions !== 1) return null;
 
     const nonComm = ops.filter(o => o === "−" || o === "÷" || o === "^" || o === "C").length;
-    const hasNested = hasDoubleRadical(ast);
-    // 二重根号を外した √p ± √q に、√r をかける・割る（または (√p ∓ √q) をかける）形
     const lab = cards.map(c => c.s).join(" ");
-    const twoRoot = hasNested && /\) [÷×] √ \d+|\) × \( √/.test(lab);
+    const twoRoot = hasNested && /\) [÷×] √ \d+|\) × \( /.test(lab);
     // 二重根号の形で見せる（手札では外した形を作らせる）
     let html = t.html, text = t.text, nestedShown = false;
     const alt = nestedHtml(t);
@@ -963,15 +1169,17 @@
     const p = {
       cards: cards.map(c => c.s),
       answer: cards.map(c => c.s),
+      canon: key,
       target: v,
       targetHtml: html,
       targetText: text,
+      tag: type,
       metrics: {
         cards: cards.length,
         targetKind: t.kind,
-        fracNodes: inter.fracNodes,
+        fracNodes: inter.fracNodes + fracG,
         irrNodes: inter.irrNodes,
-        irrCancel: inter.irrNodes > 0 && isNiceRational(v),
+        irrCancel,
         nonComm,
         valid: res.valid,
         decoys: res.decoys,
@@ -980,103 +1188,88 @@
         parens,
         nested: hasNested || nestedShown,
         twoRoot,
+        builtFuncs: built,
+        trivialFuncs: trivial,
+        bigInt: t.kind === "int" && Math.abs(v) >= 100,
       },
     };
     p.score = scorePuzzle(p);
-    const m = p.metrics;
-    p.tag = m.fracNodes > 0 ? "frac"
-      : m.nested ? "nested"
-      : m.parens ? "paren"
-      : m.irrCancel ? "irr"
-      : "mix";
     return p;
   }
 
-  // 候補をいくつか集め、いちばん「考えさせる」ものを選ぶ
-  function makePuzzle(level, opts = {}) {
+  // 種類を重みに従って選ぶ
+  function pickType(cfg, rnd, exclude) {
+    const entries = Object.entries(cfg.types).filter(([t]) => !exclude.has(t));
+    const total = entries.reduce((s, [, w]) => s + w, 0);
+    let r = rnd() * total;
+    for (const [t, w] of entries) { if ((r -= w) <= 0) return t; }
+    return entries[entries.length - 1][0];
+  }
+
+  // 1つの種類について候補を集め、いちばん「考えさせる」ものを選ぶ。
+  // その種類で作れなければ別の種類に切り替える
+  function* puzzleSteps(level, opts) {
     const cfg = CONFIG[level];
     const rnd = opts.rnd || Math.random;
     const want = opts.candidates || cfg.candidates;
-    const deadline = Date.now() + (opts.timeLimit || 4000);
-    const found = [];
-    let seen = 0;
-    for (let tries = 0; tries < 200000 && found.length < want && seen < want * 3; tries++) {
-      if (found.length && Date.now() > deadline) break;
-      const c = makeCandidate(cfg, rnd, { noNest: nestFull(found, want) });
-      if (c) { seen++; if (accept(found, c, want)) found.push(c); }
+    const start = Date.now();
+    const limit = opts.timeLimit || 4000;
+    const tried = new Set();
+    let type = opts.type || pickType(cfg, rnd, tried);
+    let found = [], typeStart = Date.now(), tries = 0;
+    while (true) {
+      const c = makeCandidate(cfg, rnd, { type, avoid: opts.avoid });
+      tries++;
+      if (c && !found.some(f => f.canon === c.canon)) found.push(c);
+      const typeElapsed = Date.now() - typeStart;
+      if (found.length >= want || (found.length && typeElapsed > limit / 3) || Date.now() - start > limit) break;
+      if (!found.length && (typeElapsed > limit / 4 || tries > 30000)) {
+        tried.add(type);
+        if (tried.size >= TYPES.length) break;
+        type = pickType(cfg, rnd, tried);
+        typeStart = Date.now(); tries = 0;
+      }
+      if (tries % 20 === 0) yield;
     }
     if (!found.length) return fallbackPuzzle();
-    const best = choose(found, cfg, rnd);
+    found.sort((a, b) => b.score - a.score);
+    const best = found[Math.floor(rnd() * Math.min(cfg.pickFrom, found.length))];
     best.candidates = found.length;
-    if (opts.debug) best.others = found.slice(1).map(f => ({ score: f.score, text: f.targetText, answer: f.answer.join(" ") }));
+    if (opts.debug) best.others = found.filter(f => f !== best).map(f => ({ score: f.score, text: f.targetText, answer: f.answer.join(" ") }));
     return best;
   }
 
-  // 同じ種類の候補が集まりすぎないようにする（1種類あたり全体の3分の1まで）
-  // 二重根号の候補が十分集まったら、それ以外の候補づくりに時間を回す
-  function nestFull(found, want) {
-    return found.filter(f => f.tag === "nested").length >= Math.ceil(want / 3);
-  }
-  function accept(found, c, want) {
-    const cap = Math.ceil(want / 3);
-    return found.filter(f => f.tag === c.tag).length < cap;
-  }
-
-  // 種類（分数・二重根号・かっこ・無理数の打ち消し・その他）をまず等確率で選び、
-  // その中で点数の高いものを出す。同じ種類ばかり続かないようにするため
-  function choose(found, cfg, rnd) {
-    const byTag = {};
-    for (const f of found) (byTag[f.tag] = byTag[f.tag] || []).push(f);
-    const tags = Object.keys(byTag);
-    // 二重根号は nestWeight の確率で優先し、残りは種類ごとに等確率
-    let tag;
-    if (byTag.nested && rnd() < cfg.nestWeight) tag = "nested";
-    else {
-      const rest = tags.filter(t => t !== "nested" || tags.length === 1);
-      tag = rest[Math.floor(rnd() * rest.length)];
-    }
-    const list = byTag[tag];
-    list.sort((a, b) => b.score - a.score);
-    return list[Math.floor(rnd() * Math.min(cfg.pickFrom, list.length))];
-  }
-
-  function fallbackPuzzle() {
-    const cards = ["7", "−", "(", "cos", "π", "+", "3", ")", "÷", "2"];
-    const v = valueOf(cards.map(cardFromLabel));
-    const t = niceTarget(v);
-    return { cards, answer: cards.slice(), target: v, targetHtml: t.html, targetText: t.text, metrics: {}, score: 0 };
+  function makePuzzle(level, opts = {}) {
+    const it = puzzleSteps(level, opts);
+    let r;
+    do { r = it.next(); } while (!r.done);
+    return r.value;
   }
 
   // 非同期版（ブラウザで画面を固めないため、少しずつ処理する）
   async function makePuzzleAsync(level, opts = {}) {
-    const cfg = CONFIG[level];
-    const rnd = opts.rnd || Math.random;
-    const want = opts.candidates || cfg.candidates;
-    const deadline = Date.now() + (opts.timeLimit || 3000);
-    const found = [];
-    let tries = 0, seen = 0;
-    while (found.length < want && seen < want * 3 && tries < 200000) {
-      const sliceEnd = Date.now() + 30;
-      while (Date.now() < sliceEnd && found.length < want && seen < want * 3 && tries < 200000) {
-        tries++;
-        const c = makeCandidate(cfg, rnd, { noNest: nestFull(found, want) });
-        if (c) { seen++; if (accept(found, c, want)) found.push(c); }
-      }
-      if (found.length && Date.now() > deadline) break;
-      await new Promise(r => setTimeout(r, 0));
-    }
-    if (!found.length) return fallbackPuzzle();
-    const best = choose(found, cfg, rnd);
-    best.candidates = found.length;
-    if (opts.debug) best.others = found.slice(1).map(f => ({ score: f.score, text: f.targetText, answer: f.answer.join(" ") }));
-    return best;
+    const it = puzzleSteps(level, opts);
+    let r, slice = Date.now();
+    do {
+      r = it.next();
+      if (!r.done && Date.now() - slice > 25) { await new Promise(res => setTimeout(res, 0)); slice = Date.now(); }
+    } while (!r.done);
+    return r.value;
+  }
+
+  function fallbackPuzzle() {
+    const cards = ["7", "−", "(", "cos", "π", "+", "3", ")", "÷", "2"];
+    const ast = parse(cards.map(cardFromLabel));
+    const v = evaluate(ast);
+    const t = niceTarget(v);
+    return { cards, answer: cards.slice(), canon: canon(ast), target: v, targetHtml: t.html, targetText: t.text, tag: "mix", metrics: {}, score: 0 };
   }
 
   const Engine = {
     exactHtml: exactHtmlSafe,
     CARD, FUNCS, CONFIG, WEIGHTS, cardFromLabel, ParseError, parse, evaluate, valueOf, close, canon, enumerate, analyze,
     niceTarget, nestedHtml, render, renderText, generate, isPadded, parensNeeded, irrationalExposed, intermediates,
-    scorePuzzle, makeCandidate, makePuzzle, makePuzzleAsync, makeRng, asFraction,
+    scorePuzzle, makeCandidate, makePuzzle, makePuzzleAsync, makeRng, asFraction, TYPES, NESTS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = Engine;
   else root.Engine = Engine;

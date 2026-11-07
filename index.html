@@ -267,7 +267,49 @@ const LEVEL = {
   hard: { name: "Hard", hintStep: 2, hintCost: 40, perCard: 25 },
 };
 
-const G = { level: null, stage: 1, hp: 3, score: 0, puzzle: null, placed: [], hints: 0, solved: false, token: 0 };
+const G = { level: null, stage: 1, hp: 3, score: 0, puzzle: null, placed: [], hints: 0, solved: false, token: 0, next: null };
+
+// ---- 最近出した問題（同じ式をくり返さないため）----
+const RECENT_MAX = 1000;
+function loadRecent(level) {
+  try { return JSON.parse(localStorage.getItem("uniqueSolveRecent:" + level)) || []; } catch (e) { return []; }
+}
+function rememberPuzzle(level, canon) {
+  const list = loadRecent(level).filter(c => c !== canon);
+  list.push(canon);
+  while (list.length > RECENT_MAX) list.shift();
+  try { localStorage.setItem("uniqueSolveRecent:" + level, JSON.stringify(list)); } catch (e) {}
+  memRecent[level] = list;
+}
+const memRecent = { easy: null, hard: null };
+function recent(level) { return memRecent[level] || (memRecent[level] = loadRecent(level)); }
+
+// ---- 問題づくり：使えるなら Web Worker で、だめなら画面の処理の合間に ----
+let worker = null, workerOk = false, reqId = 0;
+const pending = new Map();
+try {
+  worker = new Worker("worker.js");
+  worker.onmessage = e => { const r = pending.get(e.data.id); if (r) { pending.delete(e.data.id); r(e.data.puzzle); } };
+  worker.onerror = () => { workerOk = false; for (const r of pending.values()) r(null); pending.clear(); };
+  workerOk = true;
+} catch (e) { workerOk = false; }
+
+async function generatePuzzle(level, avoidExtra) {
+  const avoid = recent(level).concat(avoidExtra || []);
+  if (workerOk) {
+    const id = ++reqId;
+    const p = await new Promise(res => { pending.set(id, res); worker.postMessage({ id, level, avoid, debug: DEBUG }); });
+    if (p) return p;
+    workerOk = false;
+  }
+  return E.makePuzzleAsync(level, { avoid: new Set(avoid), debug: DEBUG });
+}
+
+// 次の問題を、今の問題を解いている間に作っておく
+function prefetch() {
+  const level = G.level, avoid = G.puzzle ? [G.puzzle.canon] : [];
+  G.next = { level, promise: generatePuzzle(level, avoid) };
+}
 
 function loadBest(level) { try { return Number(localStorage.getItem("uniqueSolveBest:" + level)) || 0; } catch (e) { return 0; } }
 function saveBest(level, v) { try { localStorage.setItem("uniqueSolveBest:" + level, v); } catch (e) {} }
@@ -391,8 +433,13 @@ async function newPuzzle() {
   $("foeGlyph").className = "foe-glyph";
   $("foeName").textContent = name;
   $("foeSub").textContent = "封印数ちょうどの式をぶつけると倒せる";
-  const p = await E.makePuzzleAsync(G.level, { debug: DEBUG });
+  let p = null;
+  if (G.next && G.next.level === G.level) p = await G.next.promise;
+  G.next = null;
+  if (p && recent(G.level).includes(p.canon)) p = null; // 先読み中に同じ問題が出ていた
+  if (!p) p = await generatePuzzle(G.level);
   if (token !== G.token) return; // 途中で難易度を変えた
+  rememberPuzzle(G.level, p.canon);
   if (DEBUG) {
     console.log(`[${G.level}] score ${p.score} (${p.tag})  ${p.targetText} = ${p.answer.join(" ")}`, p.metrics);
     if (p.others) console.table(p.others);
@@ -403,9 +450,11 @@ async function newPuzzle() {
   $("foeSub").textContent = `カード ${p.hand.length} 枚　封印数ちょうどの式をぶつけると倒せる`;
   renderMeta();
   renderBoard();
+  prefetch();
 }
 
 function startGame(level) {
+  G.next = null;
   G.level = level; G.stage = 1; G.hp = 3; G.score = 0;
   try { localStorage.setItem("uniqueSolveLevel", level); } catch (e) {}
   $("startPanel").hidden = true;

@@ -43,10 +43,14 @@ console.log(`枝刈りの検証: ${pruneCases} 手札で一致 ${ok ? "OK" : "NG
 // 2)(3) 作問の検証と集計
 function stats(level, count) {
   const r = E.makeRng(level === "easy" ? 11 : 13);
-  const acc = { n: 0, cards: 0, frac: 0, nonComm: 0, decoys: 0, parens: 0, nested: 0, onlyPM: 0, tags: {}, ms: 0, maxMs: 0, bad: 0 };
+  const acc = { n: 0, cards: 0, frac: 0, nonComm: 0, decoys: 0, parens: 0, nested: 0, onlyPM: 0, tags: {}, ms: 0, maxMs: 0, bad: 0, repeats: 0, builtFn: 0, trivialFn: 0, bigInt: 0, ints: 0 };
+  const recent = [];            // 遊んでいるときと同じく、最近の1000問は避ける
+  const everSeen = new Set();
   for (let i = 0; i < count; i++) {
     const t0 = Date.now();
-    const p = E.makePuzzle(level, { rnd: r });
+    const p = E.makePuzzle(level, { rnd: r, avoid: new Set(recent) });
+    if (everSeen.has(p.canon)) acc.repeats++;
+    everSeen.add(p.canon); recent.push(p.canon); if (recent.length > 1000) recent.shift();
     const dt = Date.now() - t0;
     const cards = p.answer.map(E.cardFromLabel);
     const res = E.analyze(cards, p.target);
@@ -62,9 +66,13 @@ function stats(level, count) {
     const ops = p.answer.filter(s => ["+", "−", "×", "÷", "^", "C", "!"].includes(s));
     if (ops.length && ops.every(o => o === "+" || o === "−") && !p.answer.some(s => E.FUNCS.includes(s) || s === "(")) acc.onlyPM++;
     acc.tags[p.tag] = (acc.tags[p.tag] || 0) + 1;
+    if (m.builtFuncs) acc.builtFn++;
+    if (m.trivialFuncs) acc.trivialFn++;
+    if (m.targetKind === "int") { acc.ints++; if (m.bigInt) acc.bigInt++; }
   }
   const pct = x => Math.round(100 * x / acc.n) + "%";
   console.log(`${level}: ${acc.n}問  解が1つでない問題 ${acc.bad}  平均カード ${(acc.cards / acc.n).toFixed(1)}枚  分数を経由 ${pct(acc.frac)}  かっこ ${pct(acc.parens)}  二重根号 ${pct(acc.nested)}  ＋−だけ ${pct(acc.onlyPM)}  非可換演算子 平均${(acc.nonComm / acc.n).toFixed(2)}  ひっかけ 平均${(acc.decoys / acc.n).toFixed(1)}  作問 平均${Math.round(acc.ms / acc.n)}ms 最大${acc.maxMs}ms`);
+  console.log(`  くり返し ${pct(acc.repeats)}  中身を組み立てる関数 ${pct(acc.builtFn)}  言い換えだけの関数 ${pct(acc.trivialFn)}  3桁以上の整数の答え ${acc.ints ? Math.round(100 * acc.bigInt / acc.ints) : 0}%（整数の答えのうち）`);
   console.log("  種類の内訳:", JSON.stringify(acc.tags));
   if (acc.bad) ok = false;
 }
